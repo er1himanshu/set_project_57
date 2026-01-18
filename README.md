@@ -14,7 +14,13 @@ A full-stack application for analyzing product images with comprehensive AI-powe
 ### Ecommerce Standards
 - **Background Assessment**: Scores background cleanliness for white/neutral backgrounds
 - **Watermark Detection**: Identifies text overlays and watermarks
-- **Description Consistency**: Validates alignment between product description and image content (color matching, basic heuristics)
+- **CLIP-Powered Mismatch Detection**: AI-based image-text consistency validation using OpenAI's CLIP model
+
+### AI-Powered Features
+- **CLIP Integration**: Advanced neural network for understanding image-text relationships
+- **Semantic Matching**: Goes beyond color matching to understand product descriptions
+- **Fine-tuning Support**: Train custom models on your specific product domain
+- **Configurable Thresholds**: Adjust sensitivity based on your needs
 
 ### User Experience
 - **Modern UI**: Beautiful gradient-based design with card layouts
@@ -56,6 +62,10 @@ venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Optional: Configure CLIP settings (see backend/.env.example)
+cp .env.example .env
+# Edit .env to customize CLIP model, threshold, device, etc.
 
 # Start the backend server
 uvicorn app.main:app --reload
@@ -137,6 +147,27 @@ GET /analyze/{image_id}
 Response: ImageResultSchema object
 ```
 
+### CLIP Mismatch Detection
+```http
+POST /clip/check-mismatch
+Content-Type: multipart/form-data
+
+Parameters:
+  - file: image file (required)
+  - description: product description text (required)
+  - threshold: similarity threshold (optional, default: 0.25)
+
+Response:
+{
+  "is_match": true,
+  "similarity_score": 0.87,
+  "decision": "Match (score: 0.870 >= 0.250)",
+  "threshold_used": 0.25
+}
+```
+
+For detailed API documentation, see [docs/api-spec.md](docs/api-spec.md)
+
 ## 📊 Quality Criteria
 
 Images are evaluated against the following ecommerce standards:
@@ -150,7 +181,8 @@ Images are evaluated against the following ecommerce standards:
 | **Aspect Ratio** | Standard ratios | 1:1, 4:3, 3:4, 16:9, 9:16 (±10% tolerance) |
 | **Background** | ≥ 70% | Clean/white background score |
 | **Watermarks** | None | No text overlays or watermarks |
-| **Description** | Consistent | Color and content matching |
+| **Description** | Consistent | CLIP-based semantic matching |
+| **CLIP Similarity** | ≥ 0.25 | AI-powered image-text similarity score |
 
 ### Response Schema
 
@@ -171,7 +203,9 @@ Images are evaluated against the following ecommerce standards:
   "background_score": 0.85,
   "has_watermark": false,
   "description_consistency": "Consistent",
-  "improvement_suggestions": "Image meets quality standards"
+  "improvement_suggestions": "Image meets quality standards",
+  "clip_similarity_score": 0.87,
+  "clip_mismatch": false
 }
 ```
 
@@ -189,11 +223,20 @@ set_project_57/
 │   │   ├── routes/
 │   │   │   ├── upload.py        # Image upload endpoint
 │   │   │   ├── analyze.py       # Analysis endpoint
-│   │   │   └── results.py       # Results retrieval endpoints
+│   │   │   ├── results.py       # Results retrieval endpoints
+│   │   │   └── clip.py          # CLIP mismatch detection endpoints
 │   │   └── services/
 │   │       ├── image_quality.py # Image analysis logic
-│   │       └── storage.py       # File storage management
+│   │       ├── storage.py       # File storage management
+│   │       └── clip_service.py  # CLIP-based mismatch detection
+│   ├── training/                # CLIP fine-tuning pipeline
+│   │   ├── dataset_loader.py    # Dataset loader for training
+│   │   ├── train_clip.py        # Training script
+│   │   ├── inference_clip.py    # Standalone inference script
+│   │   ├── README.md            # Training documentation
+│   │   └── sample_data/         # Sample dataset examples
 │   ├── requirements.txt         # Python dependencies
+│   ├── .env.example             # Environment configuration example
 │   └── uploads/                 # Uploaded images (auto-created)
 ├── frontend/
 │   ├── src/
@@ -211,6 +254,10 @@ set_project_57/
 │   ├── index.html               # HTML template
 │   ├── package.json             # Node dependencies
 │   └── tailwind.config.js       # Tailwind CSS config
+├── docs/
+│   ├── api-spec.md              # API documentation
+│   ├── architecture.md          # Architecture overview
+│   └── clip-usage-guide.md      # CLIP usage guide
 └── README.md                    # This file
 ```
 
@@ -218,9 +265,10 @@ set_project_57/
 
 ### Backend Configuration
 
-Edit `backend/app/config.py` to adjust quality thresholds:
+Edit `backend/app/config.py` or use environment variables (see `backend/.env.example`):
 
 ```python
+# Image Quality Thresholds
 MIN_WIDTH = 1000              # Minimum image width
 MIN_HEIGHT = 1000             # Minimum image height
 BLUR_THRESHOLD = 100.0        # Blur detection threshold
@@ -228,6 +276,11 @@ MIN_SHARPNESS = 50.0          # Sharpness threshold
 MIN_BRIGHTNESS = 60           # Minimum brightness
 MAX_BRIGHTNESS = 200          # Maximum brightness
 MIN_BACKGROUND_SCORE = 0.7    # Background quality threshold
+
+# CLIP Configuration
+CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"  # CLIP model
+CLIP_SIMILARITY_THRESHOLD = 0.25  # Mismatch detection threshold
+CLIP_DEVICE = "cpu"  # Use "cuda" for GPU acceleration
 ```
 
 ### Frontend Configuration
@@ -272,6 +325,14 @@ print(response.json())
 # Get results
 results = requests.get("http://localhost:8000/results")
 print(results.json())
+
+# Check image-text mismatch using CLIP
+url = "http://localhost:8000/clip/check-mismatch"
+files = {"file": open("product.jpg", "rb")}
+data = {"description": "Red leather handbag", "threshold": 0.25}
+response = requests.post(url, files=files, data=data)
+print(response.json())
+# Output: {"is_match": true, "similarity_score": 0.87, ...}
 ```
 
 ## 🛠️ Technology Stack
@@ -282,6 +343,9 @@ print(results.json())
 - **OpenCV**: Computer vision and image processing
 - **NumPy**: Numerical computing
 - **scikit-image**: Image processing algorithms
+- **PyTorch**: Deep learning framework
+- **Transformers (HuggingFace)**: CLIP model implementation
+- **Pillow**: Image processing for CLIP
 
 ### Frontend
 - **React 18**: UI library
@@ -289,6 +353,47 @@ print(results.json())
 - **Tailwind CSS**: Utility-first CSS framework
 - **Axios**: HTTP client
 - **React Router**: Client-side routing
+
+## 🤖 CLIP Fine-Tuning (Advanced)
+
+For domain-specific accuracy, you can fine-tune CLIP on your product dataset:
+
+### 1. Prepare Training Data
+
+Create a CSV file with labeled image-text pairs:
+
+```csv
+image_path,text,label
+products/handbag1.jpg,Red leather handbag,1
+products/handbag2.jpg,Blue cotton t-shirt,0
+```
+
+- Label `1` = Match (consistent)
+- Label `0` = Mismatch (inconsistent)
+
+### 2. Train Model
+
+```bash
+cd backend/training
+
+python train_clip.py \
+  --train_csv data/train.csv \
+  --val_csv data/val.csv \
+  --image_base_path data/ \
+  --output_dir ./fine_tuned_clip \
+  --epochs 10 \
+  --batch_size 32 \
+  --device cuda  # Use 'cpu' if no GPU
+```
+
+### 3. Use Fine-Tuned Model
+
+```bash
+export CLIP_FINE_TUNED_MODEL_PATH=/path/to/fine_tuned_clip/best_model
+uvicorn app.main:app --reload
+```
+
+For detailed training instructions, see [backend/training/README.md](backend/training/README.md) and [docs/clip-usage-guide.md](docs/clip-usage-guide.md).
 
 ## 🐛 Troubleshooting
 
@@ -331,6 +436,24 @@ npm run dev -- --port 3000
 **CORS errors:**
 - Ensure backend is running at http://localhost:8000
 - Check CORS settings in `backend/app/main.py`
+
+### CLIP Issues
+
+**CLIP model loading slow:**
+- First load downloads model (~350MB), subsequent loads are fast
+- Models are cached in `backend/clip_models/`
+
+**Out of memory (CUDA):**
+```bash
+# Use CPU instead
+export CLIP_DEVICE=cpu
+```
+
+**Slow inference:**
+- Use GPU for faster inference: `export CLIP_DEVICE=cuda`
+- First request is slower (model loading), subsequent requests are fast
+
+For more troubleshooting, see [docs/clip-usage-guide.md](docs/clip-usage-guide.md).
 
 ## 📝 License
 
