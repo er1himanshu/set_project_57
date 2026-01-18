@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import SessionLocal
 from ..models import ImageResult
@@ -17,3 +17,10 @@ def get_db():
 @router.get("/results", response_model=List[ImageResultSchema])
 def get_all_results(db: Session = Depends(get_db)):
     return db.query(ImageResult).all()
+
+@router.get("/results/{result_id}", response_model=ImageResultSchema)
+def get_result_detail(result_id: int, db: Session = Depends(get_db)):
+    result = db.query(ImageResult).filter(ImageResult.id == result_id).first()
+    if result is None:
+        raise HTTPException(status_code=404, detail="Result not found")
+    return result

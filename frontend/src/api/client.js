@@ -4,10 +4,31 @@ const API = axios.create({
   baseURL: "http://localhost:8000"
 });
 
-export const uploadImage = (file) => {
-  const formData = new FormData();
-  formData.append("file", file);
-  return API.post("/upload", formData);
+export const uploadImage = async (file) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    return await API.post("/upload", formData);
+  } catch (error) {
+    console.error("Upload error:", error);
+    throw error;
+  }
 };
 
-export const fetchResults = () => API.get("/results");
+export const fetchResults = async () => {
+  try {
+    return await API.get("/results");
+  } catch (error) {
+    console.error("Fetch results error:", error);
+    throw error;
+  }
+};
+
+export const fetchResultDetail = async (id) => {
+  try {
+    return await API.get(`/results/${id}`);
+  } catch (error) {
+    console.error("Fetch result detail error:", error);
+    throw error;
+  }
+};
