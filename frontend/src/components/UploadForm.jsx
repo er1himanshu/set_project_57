@@ -281,6 +281,60 @@ function ResultsDisplay({ resultId }) {
         </div>
       </div>
 
+      {/* Image-Text Mismatch Warning */}
+      {result.has_mismatch && result.similarity_score !== null && (
+        <div className="mb-8 p-6 bg-warning-50 border-2 border-warning-400 rounded-xl shadow-soft animate-slide-in">
+          <div className="flex items-start">
+            <svg className="w-8 h-8 text-warning-600 mr-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div className="flex-1">
+              <h4 className="text-xl font-bold text-warning-900 mb-2">
+                ⚠ Image-Text Mismatch Detected
+              </h4>
+              <p className="text-warning-800 mb-3 text-base">
+                {result.mismatch_message || 'The uploaded image may not match the provided description.'}
+              </p>
+              <div className="flex items-center gap-4 text-sm">
+                <span className="font-bold text-warning-900">Similarity Score:</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-32 bg-warning-200 rounded-full h-3">
+                    <div 
+                      className="bg-warning-600 h-3 rounded-full transition-all"
+                      style={{ width: `${(result.similarity_score * 100).toFixed(0)}%` }}
+                    ></div>
+                  </div>
+                  <span className="font-bold text-warning-900">{(result.similarity_score * 100).toFixed(1)}%</span>
+                </div>
+              </div>
+              <p className="mt-3 text-sm text-warning-700 font-medium">
+                💡 Consider reviewing the product description to ensure it accurately describes the image content.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image-Text Match Badge */}
+      {!result.has_mismatch && result.similarity_score !== null && result.description && (
+        <div className="mb-8 p-6 bg-success-50 border-2 border-success-200 rounded-xl shadow-soft">
+          <div className="flex items-center">
+            <svg className="w-6 h-6 text-success-600 mr-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-success-800 font-bold text-base">
+                ✓ Image and description match well
+              </p>
+              <div className="flex items-center gap-2 mt-2 text-sm">
+                <span className="text-success-700 font-medium">Similarity Score:</span>
+                <span className="font-bold text-success-900">{(result.similarity_score * 100).toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quality Checklist */}
       <div className="grid md:grid-cols-2 gap-6 mb-8">
         <div className="card border-2 border-primary-100 p-6">

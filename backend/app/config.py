@@ -29,3 +29,7 @@ TEXT_CONFIDENCE_THRESHOLD = 0.5  # For watermark/text detection
 TEXT_DETECTION_LINE_RATIO = 0.005  # Ratio of organized line pixels indicating text (0.5%)
 COLOR_SIMILARITY_THRESHOLD = 100  # Color distance threshold for description matching
 MAX_PIXELS_FOR_COLOR_SAMPLING = 10000  # Maximum pixels to sample for color analysis
+
+# Image-Text Mismatch Detection (CLIP)
+MISMATCH_THRESHOLD = 0.25  # Similarity score threshold (0-1, lower = mismatch)
+CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"  # Pretrained CLIP model
