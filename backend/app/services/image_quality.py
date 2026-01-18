@@ -75,6 +75,8 @@ def analyze_image(path: str, description: str = None, use_clip: bool = True):
             # Update description consistency based on CLIP if available
             if clip_mismatch:
                 description_consistency = f"CLIP detected mismatch (score: {clip_similarity_score:.3f})"
+            elif clip_result.get('is_match'):
+                description_consistency = f"CLIP verified match (score: {clip_similarity_score:.3f})"
         except Exception as e:
             logger.warning(f"CLIP check failed, falling back to heuristic: {str(e)}")
             # Continue with heuristic-based consistency check

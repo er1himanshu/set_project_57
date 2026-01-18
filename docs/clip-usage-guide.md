@@ -252,7 +252,7 @@ export CLIP_MODEL_NAME="openai/clip-vit-base-patch32"  # Pre-trained model
 export CLIP_FINE_TUNED_MODEL_PATH="/path/to/model"     # Override with fine-tuned
 
 # Similarity Threshold
-export CLIP_SIMILARITY_THRESHOLD=0.25  # Adjust based on your needs
+export CLIP_SIMILARITY_THRESHOLD=0.6  # Default: 0.6, adjust based on your needs
 
 # Device Selection
 export CLIP_DEVICE=cuda  # Use GPU

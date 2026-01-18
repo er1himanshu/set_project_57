@@ -36,7 +36,7 @@ class CLIPInference:
         self,
         model_path: str = "openai/clip-vit-base-patch32",
         device: str = None,
-        threshold: float = 0.25
+        threshold: float = 0.6
     ):
         """
         Initialize inference.
@@ -186,8 +186,8 @@ def main():
     # Model arguments
     parser.add_argument('--model', type=str, default='openai/clip-vit-base-patch32',
                         help='Path to fine-tuned model or HuggingFace model name')
-    parser.add_argument('--threshold', type=float, default=0.25,
-                        help='Threshold for match/mismatch decision')
+    parser.add_argument('--threshold', type=float, default=0.6,
+                        help='Threshold for match/mismatch decision (default: 0.6)')
     parser.add_argument('--device', type=str, default=None,
                         help='Device to use (cuda/cpu)')
     

@@ -105,11 +105,26 @@ class ImageTextDataset(Dataset):
             
             return inputs
             
+        except FileNotFoundError:
+            error_msg = (
+                f"Image file not found for sample {idx}: {image_path}\n"
+                f"Please verify:\n"
+                f"  1. Image exists at the specified path\n"
+                f"  2. --image_base_path is set correctly\n"
+                f"  3. CSV contains correct relative paths"
+            )
+            logger.error(error_msg)
+            raise FileNotFoundError(error_msg)
         except Exception as e:
-            logger.error(f"Error loading sample {idx} (image: {image_path}): {str(e)}")
-            # Re-raise the exception to fail fast on data issues
-            # This ensures data quality problems are caught during training setup
-            raise
+            error_msg = (
+                f"Error loading sample {idx}:\n"
+                f"  Image path: {image_path}\n"
+                f"  Text: {row['text'][:50]}...\n"
+                f"  Error: {str(e)}\n"
+                f"Suggestion: Run with --validate_data to check dataset before training"
+            )
+            logger.error(error_msg)
+            raise RuntimeError(error_msg) from e
 
 
 def create_dataloaders(
