@@ -18,6 +18,7 @@ def get_db():
 def upload_image(file: UploadFile = File(...), db: Session = Depends(get_db)):
     try:
         file_path = save_upload(file)
+        # analyze_image returns None if the image cannot be read or is invalid
         analysis = analyze_image(file_path)
 
         if analysis is None:
@@ -38,5 +39,10 @@ def upload_image(file: UploadFile = File(...), db: Session = Depends(get_db)):
         db.refresh(result)
 
         return {"message": "Uploaded & analyzed", "result_id": result.id}
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+        # Log the error internally but return generic message to user
+        print(f"Upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Upload failed. Please try again.")

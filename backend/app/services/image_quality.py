@@ -4,6 +4,17 @@ from skimage import exposure
 from ..config import MIN_WIDTH, MIN_HEIGHT, BLUR_THRESHOLD, MIN_BRIGHTNESS, MAX_BRIGHTNESS
 
 def analyze_image(path: str):
+    """
+    Analyze image quality metrics including resolution, blur, brightness, and contrast.
+    
+    Args:
+        path: File system path to the image file
+        
+    Returns:
+        dict: Analysis results containing width, height, blur_score, brightness_score,
+              contrast_score, passed (bool), and reason (str)
+        None: If the image file cannot be read or is invalid
+    """
     image = cv2.imread(path)
     if image is None:
         return None

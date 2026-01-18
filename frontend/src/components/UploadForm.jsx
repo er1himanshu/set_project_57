@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { uploadImage } from "../api/client";
 
 export default function UploadForm() {
@@ -6,6 +6,7 @@ export default function UploadForm() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const handleUpload = async () => {
     if (!file) {
@@ -21,6 +22,10 @@ export default function UploadForm() {
       const res = await uploadImage(file);
       setMessage(`Uploaded! Result ID: ${res.data.result_id}`);
       setFile(null);
+      // Reset the file input element
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     } catch (err) {
       setError(err.response?.data?.detail || "Upload failed");
     } finally {
@@ -32,6 +37,7 @@ export default function UploadForm() {
     <div className="p-6 bg-white rounded shadow">
       <h2 className="text-xl font-bold mb-4">Upload Image for Analysis</h2>
       <input 
+        ref={fileInputRef}
         type="file" 
         accept="image/*"
         onChange={(e) => setFile(e.target.files[0])} 
