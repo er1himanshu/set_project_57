@@ -29,3 +29,28 @@ TEXT_CONFIDENCE_THRESHOLD = 0.5  # For watermark/text detection
 TEXT_DETECTION_LINE_RATIO = 0.005  # Ratio of organized line pixels indicating text (0.5%)
 COLOR_SIMILARITY_THRESHOLD = 100  # Color distance threshold for description matching
 MAX_PIXELS_FOR_COLOR_SAMPLING = 10000  # Maximum pixels to sample for color analysis
+
+# CLIP configuration
+CLIP_MODEL_NAME = os.getenv("CLIP_MODEL_NAME", "openai/clip-vit-base-patch32")
+CLIP_MODEL_PATH = os.getenv("CLIP_MODEL_PATH", None)  # Optional: path to fine-tuned model
+CLIP_SIMILARITY_THRESHOLD = float(os.getenv("CLIP_SIMILARITY_THRESHOLD", "0.25"))  # Threshold for mismatch detection
+CLIP_BATCH_SIZE = int(os.getenv("CLIP_BATCH_SIZE", "8"))  # Batch size for inference
+
+# CLIP training configuration
+CLIP_TRAIN_BATCH_SIZE = int(os.getenv("CLIP_TRAIN_BATCH_SIZE", "16"))
+CLIP_TRAIN_LEARNING_RATE = float(os.getenv("CLIP_TRAIN_LEARNING_RATE", "5e-6"))
+CLIP_TRAIN_EPOCHS = int(os.getenv("CLIP_TRAIN_EPOCHS", "3"))
+CLIP_CHECKPOINT_DIR = os.getenv("CLIP_CHECKPOINT_DIR", os.path.join(BASE_DIR, "clip_checkpoints"))
+
+# Default product categories for class-based comparison
+DEFAULT_CATEGORIES = [
+    "shoes", "sneakers", "boots", "sandals",
+    "shirt", "t-shirt", "blouse", "dress", "pants", "jeans", "shorts", "skirt",
+    "jacket", "coat", "sweater", "hoodie",
+    "handbag", "backpack", "purse", "wallet",
+    "watch", "sunglasses", "jewelry", "necklace", "bracelet", "earrings",
+    "hat", "cap", "scarf", "gloves",
+    "electronics", "phone", "laptop", "tablet", "camera",
+    "furniture", "chair", "table", "sofa", "bed",
+    "toy", "book", "cosmetics", "perfume"
+]

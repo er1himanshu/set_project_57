@@ -1,0 +1,32 @@
+image_path,text,label
+data/images/handbag_001.jpg,red leather handbag with gold hardware,1
+data/images/handbag_001.jpg,blue cotton t-shirt,0
+data/images/handbag_001.jpg,silver laptop computer,0
+data/images/shoes_001.jpg,black leather oxford dress shoes,1
+data/images/shoes_001.jpg,brown leather handbag,0
+data/images/shoes_001.jpg,white ceramic coffee mug,0
+data/images/laptop_001.jpg,15 inch silver laptop with backlit keyboard,1
+data/images/laptop_001.jpg,red running sneakers,0
+data/images/laptop_001.jpg,wooden dining chair,0
+data/images/watch_001.jpg,stainless steel chronograph watch,1
+data/images/watch_001.jpg,blue denim jeans,0
+data/images/tshirt_001.jpg,white cotton crew neck t-shirt,1
+data/images/tshirt_001.jpg,black leather wallet,0
+data/images/backpack_001.jpg,gray canvas hiking backpack,1
+data/images/backpack_001.jpg,gold wedding ring,0
+data/images/sunglasses_001.jpg,aviator sunglasses with black frame,1
+data/images/sunglasses_001.jpg,portable bluetooth speaker,0
+data/images/jacket_001.jpg,navy blue windbreaker jacket,1
+data/images/jacket_001.jpg,ceramic flower vase,0
+data/images/wallet_001.jpg,brown leather bifold wallet,1
+data/images/wallet_001.jpg,green plant pot,0
+data/images/sneakers_001.jpg,white athletic running sneakers,1
+data/images/sneakers_001.jpg,stainless steel water bottle,0
+data/images/dress_001.jpg,black cocktail dress with lace detail,1
+data/images/dress_001.jpg,tablet computer with stylus,0
+data/images/headphones_001.jpg,wireless over-ear headphones,1
+data/images/headphones_001.jpg,leather office chair,0
+data/images/jeans_001.jpg,blue straight-leg denim jeans,1
+data/images/jeans_001.jpg,pizza with pepperoni,0
+data/images/ring_001.jpg,diamond engagement ring with white gold band,1
+data/images/ring_001.jpg,chocolate cake slice,0
