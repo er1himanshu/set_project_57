@@ -1,92 +1,345 @@
-# AI-Powered Image Quality Analysis and Management System
+# AI-Powered Ecommerce Product Listing Evaluator
 
-A full-stack application for analyzing image quality with AI-powered metrics including resolution, blur detection, brightness, and contrast analysis.
+A full-stack application for analyzing product images with comprehensive AI-powered quality metrics specifically designed for ecommerce marketplaces. Ensure your product images meet professional standards with instant feedback and actionable suggestions.
 
-## Features
-- Upload product images through a modern web interface
-- Automatic quality analysis with multiple metrics:
-  - Resolution validation (minimum 1000x1000)
-  - Blur detection using Laplacian variance
-  - Brightness analysis
-  - Contrast scoring
-- Pass/Fail decision with detailed reasoning
-- Interactive results dashboard
-- RESTful API with CORS support
+## 🌟 Features
 
-## Prerequisites
-- Python 3.8+
-- Node.js 16+
-- pip
-- npm
+### Image Quality Analysis
+- **Resolution Validation**: Ensures images meet minimum 1000×1000 pixel requirement
+- **Blur Detection**: Uses Laplacian variance to detect unfocused or blurry images
+- **Sharpness Analysis**: Edge detection to verify image clarity
+- **Brightness & Contrast**: Validates proper lighting conditions
+- **Aspect Ratio Check**: Validates standard ecommerce ratios (1:1, 4:3, 16:9, etc.)
 
-## Setup and Run
+### Ecommerce Standards
+- **Background Assessment**: Scores background cleanliness for white/neutral backgrounds
+- **Watermark Detection**: Identifies text overlays and watermarks
+- **Description Consistency**: Validates alignment between product description and image content (color matching, basic heuristics)
 
-### Backend (FastAPI)
+### User Experience
+- **Modern UI**: Beautiful gradient-based design with card layouts
+- **Image Preview**: See your image before upload
+- **Real-time Results**: Instant analysis with detailed quality checklist
+- **Improvement Suggestions**: Actionable tips to enhance image quality
+- **Results Dashboard**: Track all analyses with statistics and filters
+
+## 🚀 Prerequisites
+
+- **Python** 3.8 or higher
+- **Node.js** 16 or higher
+- **pip** (Python package manager)
+- **npm** (Node package manager)
+
+## 📦 Installation & Setup
+
+### 1. Clone the Repository
+
 ```bash
+git clone https://github.com/er1himanshu/set_project_57.git
+cd set_project_57
+```
+
+### 2. Backend Setup (FastAPI)
+
+```bash
+# Navigate to backend directory
 cd backend
 
-# Create virtual environment (recommended)
+# Create and activate virtual environment (recommended)
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# On macOS/Linux:
+source venv/bin/activate
+
+# On Windows:
+venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Start the server (runs on http://localhost:8000)
+# Start the backend server
 uvicorn app.main:app --reload
 ```
 
-The backend API will be available at `http://localhost:8000`
-- API docs: `http://localhost:8000/docs`
+The backend API will run at **http://localhost:8000**
+- Interactive API documentation: **http://localhost:8000/docs**
+- Alternative API docs: **http://localhost:8000/redoc**
 
-### Frontend (React + Vite)
+### 3. Frontend Setup (React + Vite)
+
+Open a new terminal window:
+
 ```bash
+# Navigate to frontend directory
 cd frontend
 
 # Install dependencies
 npm install
 
-# Start development server (runs on http://localhost:5173)
+# Start the development server
 npm run dev
 ```
 
-The frontend will be available at `http://localhost:5173`
+The frontend will run at **http://localhost:5173**
 
-## API Endpoints
+## 🎯 Usage
 
-- `POST /upload` - Upload an image for analysis
-- `GET /results` - Get all analysis results
-- `GET /results/{id}` - Get specific result details
-- `GET /analyze/{image_id}` - Get analysis for a specific image
+### Uploading Images for Analysis
 
-## Quality Criteria
+1. Navigate to **http://localhost:5173** in your web browser
+2. Click the upload area or drag and drop a product image
+3. (Optional) Enter a product description for consistency checking
+4. Click "Analyze Image Quality"
+5. View detailed results with pass/fail status, quality metrics, and improvement suggestions
 
-Images are evaluated based on:
-- **Resolution**: Minimum 1000x1000 pixels
-- **Blur**: Laplacian variance threshold of 100.0
-- **Brightness**: Range of 60-200
+### Viewing Results
 
-Images failing any criterion will be marked as FAIL with detailed reasons.
+- Click "Results" in the navigation bar to see all analyzed images
+- View statistics: total analyzed, passed, and failed counts
+- Expand suggestions for failed images to see improvement tips
 
-## Project Structure
+## 📡 API Endpoints
+
+### Upload Image
+```http
+POST /upload
+Content-Type: multipart/form-data
+
+Parameters:
+  - file: image file (required)
+  - description: product description text (optional)
+
+Response:
+{
+  "message": "Uploaded & analyzed",
+  "result_id": 1
+}
+```
+
+### Get All Results
+```http
+GET /results
+
+Response: Array of ImageResultSchema objects
+```
+
+### Get Specific Result
+```http
+GET /results/{result_id}
+
+Response: ImageResultSchema object with all quality metrics
+```
+
+### Get Analysis by Image ID
+```http
+GET /analyze/{image_id}
+
+Response: ImageResultSchema object
+```
+
+## 📊 Quality Criteria
+
+Images are evaluated against the following ecommerce standards:
+
+| Metric | Requirement | Description |
+|--------|-------------|-------------|
+| **Resolution** | ≥ 1000×1000 px | Minimum pixel dimensions |
+| **Blur Score** | ≥ 100.0 | Laplacian variance threshold |
+| **Sharpness** | ≥ 50.0 | Edge detection score |
+| **Brightness** | 60-200 | Optimal lighting range |
+| **Aspect Ratio** | Standard ratios | 1:1, 4:3, 3:4, 16:9, 9:16 (±10% tolerance) |
+| **Background** | ≥ 70% | Clean/white background score |
+| **Watermarks** | None | No text overlays or watermarks |
+| **Description** | Consistent | Color and content matching |
+
+### Response Schema
+
+```json
+{
+  "id": 1,
+  "filename": "product.jpg",
+  "width": 1200,
+  "height": 1200,
+  "blur_score": 150.5,
+  "brightness_score": 120.3,
+  "contrast_score": 45.2,
+  "passed": true,
+  "reason": "OK",
+  "description": "Red leather handbag",
+  "aspect_ratio": 1.0,
+  "sharpness_score": 85.7,
+  "background_score": 0.85,
+  "has_watermark": false,
+  "description_consistency": "Consistent",
+  "improvement_suggestions": "Image meets quality standards"
+}
+```
+
+## 🏗️ Project Structure
 
 ```
-.
+set_project_57/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py           # FastAPI application
-│   │   ├── models.py         # Database models
-│   │   ├── schemas.py        # Pydantic schemas
-│   │   ├── config.py         # Configuration
-│   │   ├── database.py       # Database setup
-│   │   ├── routes/           # API endpoints
-│   │   └── services/         # Business logic
-│   └── requirements.txt
+│   │   ├── main.py              # FastAPI application entry point
+│   │   ├── models.py            # SQLAlchemy database models
+│   │   ├── schemas.py           # Pydantic validation schemas
+│   │   ├── config.py            # Configuration and thresholds
+│   │   ├── database.py          # Database setup and connection
+│   │   ├── routes/
+│   │   │   ├── upload.py        # Image upload endpoint
+│   │   │   ├── analyze.py       # Analysis endpoint
+│   │   │   └── results.py       # Results retrieval endpoints
+│   │   └── services/
+│   │       ├── image_quality.py # Image analysis logic
+│   │       └── storage.py       # File storage management
+│   ├── requirements.txt         # Python dependencies
+│   └── uploads/                 # Uploaded images (auto-created)
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/           # React pages
-│   │   ├── components/      # React components
-│   │   └── api/             # API client
-│   └── package.json
-└── README.md
+│   │   ├── pages/
+│   │   │   ├── Dashboard.jsx    # Home page with upload
+│   │   │   └── Results.jsx      # Results listing page
+│   │   ├── components/
+│   │   │   ├── Navbar.jsx       # Navigation component
+│   │   │   ├── UploadForm.jsx   # Upload and analysis UI
+│   │   │   └── ResultsTable.jsx # Results display table
+│   │   ├── api/
+│   │   │   └── client.js        # API client
+│   │   ├── App.jsx              # Main app component
+│   │   └── main.jsx             # Entry point
+│   ├── index.html               # HTML template
+│   ├── package.json             # Node dependencies
+│   └── tailwind.config.js       # Tailwind CSS config
+└── README.md                    # This file
 ```
+
+## 🔧 Configuration
+
+### Backend Configuration
+
+Edit `backend/app/config.py` to adjust quality thresholds:
+
+```python
+MIN_WIDTH = 1000              # Minimum image width
+MIN_HEIGHT = 1000             # Minimum image height
+BLUR_THRESHOLD = 100.0        # Blur detection threshold
+MIN_SHARPNESS = 50.0          # Sharpness threshold
+MIN_BRIGHTNESS = 60           # Minimum brightness
+MAX_BRIGHTNESS = 200          # Maximum brightness
+MIN_BACKGROUND_SCORE = 0.7    # Background quality threshold
+```
+
+### Frontend Configuration
+
+Edit `frontend/src/api/client.js` to change the API endpoint:
+
+```javascript
+const API = axios.create({
+  baseURL: "http://localhost:8000"  // Backend URL
+});
+```
+
+## 🧪 Example Requests
+
+### Using cURL
+
+```bash
+# Upload with description
+curl -X POST http://localhost:8000/upload \
+  -F "file=@/path/to/product.jpg" \
+  -F "description=Red leather handbag with gold hardware"
+
+# Get all results
+curl http://localhost:8000/results
+
+# Get specific result
+curl http://localhost:8000/results/1
+```
+
+### Using Python
+
+```python
+import requests
+
+# Upload image with description
+url = "http://localhost:8000/upload"
+files = {"file": open("product.jpg", "rb")}
+data = {"description": "Blue cotton t-shirt"}
+response = requests.post(url, files=files, data=data)
+print(response.json())
+
+# Get results
+results = requests.get("http://localhost:8000/results")
+print(results.json())
+```
+
+## 🛠️ Technology Stack
+
+### Backend
+- **FastAPI**: Modern Python web framework
+- **SQLAlchemy**: SQL toolkit and ORM
+- **OpenCV**: Computer vision and image processing
+- **NumPy**: Numerical computing
+- **scikit-image**: Image processing algorithms
+
+### Frontend
+- **React 18**: UI library
+- **Vite**: Build tool and dev server
+- **Tailwind CSS**: Utility-first CSS framework
+- **Axios**: HTTP client
+- **React Router**: Client-side routing
+
+## 🐛 Troubleshooting
+
+### Backend Issues
+
+**Port already in use:**
+```bash
+# Use a different port
+uvicorn app.main:app --reload --port 8001
+```
+
+**Database issues:**
+```bash
+# Remove the database file and restart
+rm image_quality.db
+uvicorn app.main:app --reload
+```
+
+**OpenCV import errors:**
+```bash
+# Install system dependencies (Ubuntu/Debian)
+sudo apt-get install python3-opencv libgl1
+
+# Or reinstall opencv-python
+pip uninstall opencv-python
+pip install opencv-python
+```
+
+### Frontend Issues
+
+**Port 5173 already in use:**
+```bash
+# Kill the process
+lsof -ti:5173 | xargs kill -9
+
+# Or use different port
+npm run dev -- --port 3000
+```
+
+**CORS errors:**
+- Ensure backend is running at http://localhost:8000
+- Check CORS settings in `backend/app/main.py`
+
+## 📝 License
+
+This project is open source and available for educational purposes.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📧 Support
+
+For issues and questions, please open an issue on the GitHub repository.
