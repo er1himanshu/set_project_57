@@ -120,7 +120,9 @@ async def upload_image(
             background_score=analysis.get("background_score"),
             has_watermark=analysis.get("has_watermark", False),
             description_consistency=analysis.get("description_consistency"),
-            improvement_suggestions=analysis.get("improvement_suggestions")
+            improvement_suggestions=analysis.get("improvement_suggestions"),
+            clip_similarity_score=analysis.get("clip_similarity_score"),
+            clip_mismatch=analysis.get("clip_mismatch")
         )
         db.add(result)
         db.commit()
