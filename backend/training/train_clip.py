@@ -122,8 +122,8 @@ class CLIPFineTuner:
         
         self.model.to(self.device)
         
-        # Loss function for binary classification
-        self.criterion = nn.CrossEntropyLoss()
+        # Loss function for contrastive learning
+        self.criterion = nn.BCEWithLogitsLoss()
     
     def train(
         self,
@@ -188,14 +188,21 @@ class CLIPFineTuner:
                 # Forward pass
                 outputs = self.model(**batch)
                 
+                # Get image and text embeddings
+                image_embeds = outputs.image_embeds
+                text_embeds = outputs.text_embeds
+                
+                # Normalize embeddings
+                image_embeds = image_embeds / image_embeds.norm(p=2, dim=-1, keepdim=True)
+                text_embeds = text_embeds / text_embeds.norm(p=2, dim=-1, keepdim=True)
+                
+                # Compute cosine similarity
+                similarity = (image_embeds * text_embeds).sum(dim=-1)
+                
                 # Compute contrastive loss
-                logits_per_image = outputs.logits_per_image
-                
-                # Create targets for binary classification
-                targets = labels.float().unsqueeze(1)
-                
-                # Compute loss (using image-text similarity)
-                loss = self.criterion(logits_per_image, labels)
+                # Labels: 1 for match, 0 for mismatch
+                # We want high similarity for match (label=1), low for mismatch (label=0)
+                loss = self.criterion(similarity, labels.float())
                 
                 # Backward pass
                 optimizer.zero_grad()
@@ -242,9 +249,20 @@ class CLIPFineTuner:
                 labels = batch.pop('labels')
                 
                 outputs = self.model(**batch)
-                logits_per_image = outputs.logits_per_image
                 
-                loss = self.criterion(logits_per_image, labels)
+                # Get image and text embeddings
+                image_embeds = outputs.image_embeds
+                text_embeds = outputs.text_embeds
+                
+                # Normalize embeddings
+                image_embeds = image_embeds / image_embeds.norm(p=2, dim=-1, keepdim=True)
+                text_embeds = text_embeds / text_embeds.norm(p=2, dim=-1, keepdim=True)
+                
+                # Compute cosine similarity
+                similarity = (image_embeds * text_embeds).sum(dim=-1)
+                
+                # Compute loss
+                loss = self.criterion(similarity, labels.float())
                 total_loss += loss.item()
         
         self.model.train()

@@ -84,9 +84,19 @@ class CLIPService:
             with torch.no_grad():
                 outputs = self._model(**inputs)
                 
-                # Get similarity score
-                logits_per_image = outputs.logits_per_image
-                similarity = logits_per_image.softmax(dim=1)[0, 0].item()
+                # Get image and text embeddings
+                image_embeds = outputs.image_embeds
+                text_embeds = outputs.text_embeds
+                
+                # Normalize embeddings
+                image_embeds = image_embeds / image_embeds.norm(p=2, dim=-1, keepdim=True)
+                text_embeds = text_embeds / text_embeds.norm(p=2, dim=-1, keepdim=True)
+                
+                # Compute cosine similarity
+                similarity = (image_embeds @ text_embeds.T).squeeze().item()
+                
+                # Scale to 0-1 range (cosine similarity is -1 to 1)
+                similarity = (similarity + 1) / 2
             
             return float(similarity)
             
