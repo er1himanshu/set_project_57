@@ -29,3 +29,9 @@ TEXT_CONFIDENCE_THRESHOLD = 0.5  # For watermark/text detection
 TEXT_DETECTION_LINE_RATIO = 0.005  # Ratio of organized line pixels indicating text (0.5%)
 COLOR_SIMILARITY_THRESHOLD = 100  # Color distance threshold for description matching
 MAX_PIXELS_FOR_COLOR_SAMPLING = 10000  # Maximum pixels to sample for color analysis
+
+# CLIP configuration
+CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"  # Default CLIP model
+CLIP_SIMILARITY_THRESHOLD = 0.25  # Threshold for match/mismatch detection (0-1 scale)
+CLIP_DEVICE = "cpu"  # Use "cuda" if GPU available
+CLIP_ZERO_SHOT_LABELS = []  # Optional list of labels for zero-shot classification

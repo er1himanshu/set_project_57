@@ -6,3 +6,9 @@ scikit-image
 numpy
 pydantic
 python-multipart
+torch
+torchvision
+transformers
+pillow
+datasets
+scikit-learn

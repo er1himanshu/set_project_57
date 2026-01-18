@@ -20,6 +20,11 @@ class ImageResultSchema(BaseModel):
     has_watermark: Optional[bool] = False
     description_consistency: Optional[str] = None
     improvement_suggestions: Optional[str] = None
+    
+    # CLIP-based fields
+    clip_similarity_score: Optional[float] = None
+    clip_match_status: Optional[str] = None
+    clip_is_match: Optional[bool] = True
 
     class Config:
         from_attributes = True
