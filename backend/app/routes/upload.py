@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from ..database import SessionLocal
 from ..services.storage import save_upload
 from ..services.image_quality import analyze_image
@@ -160,8 +161,34 @@ async def upload_image(
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
+    except SQLAlchemyError as e:
+        # Database-specific errors
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as cleanup_error:
+                logger.error(f"Error cleaning up file {file_path}: {str(cleanup_error)}")
+        
+        logger.error(f"Database error for file {file.filename}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Database error occurred. Please try again later."
+        )
+    except PermissionError as e:
+        # File system permission errors
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+        
+        logger.error(f"Permission error for file {file.filename}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="File access error. Please try again."
+        )
     except Exception as e:
-        # Clean up file on any error
+        # Clean up file on any other error
         if file_path and os.path.exists(file_path):
             try:
                 os.remove(file_path)
@@ -171,14 +198,7 @@ async def upload_image(
         # Log the error internally with full details
         logger.error(f"Upload error for file {file.filename}: {str(e)}", exc_info=True)
         
-        # Return a more specific error message based on the error type
-        error_detail = "An error occurred during upload. Please try again."
-        if "database" in str(e).lower() or "sql" in str(e).lower():
-            error_detail = "Database error occurred. Please try again later."
-        elif "permission" in str(e).lower() or "access" in str(e).lower():
-            error_detail = "File access error. Please try again."
-        
         raise HTTPException(
             status_code=500,
-            detail=error_detail
+            detail="An error occurred during upload. Please try again."
         )
