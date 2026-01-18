@@ -152,7 +152,6 @@ def analyze_image(path: str, description: str = None, use_clip: bool = True):
         "clip_similarity_score": clip_similarity_score,
         "clip_mismatch": clip_mismatch
     }
-    }
 
 
 def calculate_sharpness(gray_image):
