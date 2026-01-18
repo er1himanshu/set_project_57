@@ -42,7 +42,8 @@ export default function UploadForm() {
       setResultId(res.data.result_id);
       // Don't clear form yet so user can see the preview with results
     } catch (err) {
-      setError(err.response?.data?.detail || "Upload failed. Please try again.");
+      // Use the enhanced error message from client.js
+      setError(err.userMessage || "Upload failed. Please try again.");
     } finally {
       setLoading(false);
     }
