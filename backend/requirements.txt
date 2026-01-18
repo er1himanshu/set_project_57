@@ -5,10 +5,10 @@ opencv-python
 scikit-image
 numpy
 pydantic
-python-multipart
-torch
+python-multipart>=0.0.18
+torch>=2.6.0
 torchvision
-transformers
+transformers>=4.48.0
 pillow
 datasets
 scikit-learn
