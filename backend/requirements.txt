@@ -6,3 +6,8 @@ scikit-image
 numpy
 pydantic
 python-multipart
+torch
+torchvision
+transformers
+pillow
+pandas
