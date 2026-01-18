@@ -3,7 +3,8 @@ import numpy as np
 from skimage import exposure
 from ..config import (
     MIN_WIDTH, MIN_HEIGHT, BLUR_THRESHOLD, MIN_BRIGHTNESS, MAX_BRIGHTNESS,
-    MIN_SHARPNESS, IDEAL_ASPECT_RATIOS, ASPECT_RATIO_TOLERANCE, MIN_BACKGROUND_SCORE
+    MIN_SHARPNESS, IDEAL_ASPECT_RATIOS, ASPECT_RATIO_TOLERANCE, MIN_BACKGROUND_SCORE,
+    TEXT_DETECTION_LINE_RATIO, COLOR_SIMILARITY_THRESHOLD, MAX_PIXELS_FOR_COLOR_SAMPLING
 )
 
 def analyze_image(path: str, description: str = None):
@@ -185,8 +186,8 @@ def detect_text_watermark(gray_image):
     total_pixels = gray_image.shape[0] * gray_image.shape[1]
     line_ratio = (h_line_pixels + v_line_pixels) / total_pixels
     
-    # If more than 0.5% of pixels are organized lines, consider it text
-    return line_ratio > 0.005
+    # If line ratio exceeds threshold, consider it text
+    return line_ratio > TEXT_DETECTION_LINE_RATIO
 
 
 def is_good_aspect_ratio(aspect_ratio):
@@ -240,7 +241,7 @@ def check_description_consistency(description, image, image_path):
             for dominant_color in colors:
                 # Calculate color similarity
                 distance = np.sqrt(sum((a - b) ** 2 for a, b in zip(dominant_color, target_color)))
-                if distance < 100:  # Threshold for color similarity
+                if distance < COLOR_SIMILARITY_THRESHOLD:  # Threshold for color similarity
                     color_match_found = True
                     break
             if color_match_found:
@@ -261,9 +262,9 @@ def analyze_dominant_colors(image, k=3):
     # Reshape image to be a list of pixels
     pixels = image.reshape(-1, 3).astype(np.float32)
     
-    # Sample pixels for performance (use up to 10000 pixels)
-    if len(pixels) > 10000:
-        indices = np.random.choice(len(pixels), 10000, replace=False)
+    # Sample pixels for performance
+    if len(pixels) > MAX_PIXELS_FOR_COLOR_SAMPLING:
+        indices = np.random.choice(len(pixels), MAX_PIXELS_FOR_COLOR_SAMPLING, replace=False)
         pixels = pixels[indices]
     
     # Apply k-means

@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { uploadImage } from "../api/client";
+import { useState, useRef, useEffect } from "react";
+import { uploadImage, fetchResultDetail } from "../api/client";
 import { useNavigate } from "react-router-dom";
 
 export default function UploadForm() {
@@ -217,10 +217,6 @@ export default function UploadForm() {
     </div>
   );
 }
-
-// Import at top level
-import { useEffect } from "react";
-import { fetchResultDetail } from "../api/client";
 
 function ResultsDisplay({ resultId }) {
   const [result, setResult] = useState(null);
