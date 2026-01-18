@@ -1,11 +1,14 @@
 import cv2
 import numpy as np
+import logging
 from skimage import exposure
 from ..config import (
     MIN_WIDTH, MIN_HEIGHT, BLUR_THRESHOLD, MIN_BRIGHTNESS, MAX_BRIGHTNESS,
     MIN_SHARPNESS, IDEAL_ASPECT_RATIOS, ASPECT_RATIO_TOLERANCE, MIN_BACKGROUND_SCORE,
     TEXT_DETECTION_LINE_RATIO, COLOR_SIMILARITY_THRESHOLD, MAX_PIXELS_FOR_COLOR_SAMPLING
 )
+
+logger = logging.getLogger(__name__)
 
 def analyze_image(path: str, description: str = None):
     """
@@ -19,12 +22,23 @@ def analyze_image(path: str, description: str = None):
         dict: Comprehensive analysis results including all ecommerce metrics
         None: If the image file cannot be read or is invalid
     """
-    image = cv2.imread(path)
-    if image is None:
-        return None
+    try:
+        image = cv2.imread(path)
+        if image is None:
+            logger.warning(f"Failed to read image: {path}")
+            return None
 
-    height, width = image.shape[:2]
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        height, width = image.shape[:2]
+        
+        # Validate image dimensions
+        if height == 0 or width == 0:
+            logger.warning(f"Invalid image dimensions: {width}x{height}")
+            return None
+            
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    except Exception as e:
+        logger.error(f"Error loading image {path}: {str(e)}", exc_info=True)
+        return None
     
     # Basic metrics
     blur_score = cv2.Laplacian(gray, cv2.CV_64F).var()

@@ -65,20 +65,20 @@ export default function UploadForm() {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-      <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-8 py-6">
-        <h2 className="text-2xl font-bold text-white mb-2">Upload Product Image</h2>
-        <p className="text-indigo-100">Upload your product image and description for comprehensive quality analysis</p>
+    <div className="card overflow-hidden animate-fade-in">
+      <div className="card-header">
+        <h2 className="text-3xl font-bold text-white mb-2">Upload Product Image</h2>
+        <p className="text-primary-100 text-lg">Upload your product image and description for comprehensive quality analysis</p>
       </div>
       
       <div className="p-8">
         <div className="grid md:grid-cols-2 gap-8">
           {/* Upload Area */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Product Image *
+            <label className="block text-base font-bold text-gray-800 mb-4">
+              Product Image <span className="text-danger-500">*</span>
             </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-indigo-400 transition-colors">
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-primary-400 hover:bg-primary-50/30 transition-all duration-200 cursor-pointer">
               {!preview ? (
                 <div>
                   <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
@@ -120,11 +120,11 @@ export default function UploadForm() {
             </div>
             
             {file && (
-              <div className="mt-4 p-3 bg-indigo-50 rounded-lg">
-                <p className="text-sm text-gray-700">
-                  <span className="font-semibold">Selected:</span> {file.name}
+              <div className="mt-4 p-4 bg-primary-50 rounded-xl border border-primary-200">
+                <p className="text-sm text-gray-800">
+                  <span className="font-bold text-primary-700">Selected:</span> {file.name}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-600 mt-1 font-medium">
                   Size: {(file.size / 1024).toFixed(2)} KB
                 </p>
               </div>
@@ -133,18 +133,18 @@ export default function UploadForm() {
 
           {/* Description Area */}
           <div>
-            <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-3">
-              Product Description (Optional)
+            <label htmlFor="description" className="block text-base font-bold text-gray-800 mb-4">
+              Product Description <span className="text-gray-500 font-normal">(Optional)</span>
             </label>
             <textarea
               id="description"
               rows="6"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+              className="input-field resize-none"
               placeholder="E.g., Red leather handbag with gold hardware, 12 inch width..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             ></textarea>
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-3 text-sm text-gray-600 font-medium">
               Provide a description to check consistency between your image and text
             </p>
 
@@ -153,7 +153,7 @@ export default function UploadForm() {
               <button
                 onClick={handleUpload}
                 disabled={loading || !file}
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
+                className="btn-primary w-full py-4 text-lg"
               >
                 {loading ? (
                   <span className="flex items-center justify-center">
@@ -171,7 +171,7 @@ export default function UploadForm() {
               {resultId && (
                 <button
                   onClick={handleReset}
-                  className="w-full bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border-2 border-gray-300 hover:border-indigo-500 hover:text-indigo-600 transition-all"
+                  className="btn-secondary w-full py-4 text-lg"
                 >
                   Upload Another Image
                 </button>
@@ -182,31 +182,34 @@ export default function UploadForm() {
 
         {/* Messages */}
         {message && (
-          <div className="mt-6 p-4 bg-green-50 border-l-4 border-green-500 rounded-lg">
+          <div className="mt-8 p-5 bg-success-50 border-l-4 border-success-500 rounded-xl shadow-soft animate-slide-in">
             <div className="flex items-center">
-              <svg className="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-6 h-6 text-success-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              <p className="text-green-800 font-medium">{message}</p>
+              <p className="text-success-800 font-bold text-lg">{message}</p>
             </div>
             {resultId && (
               <button
                 onClick={handleViewAllResults}
-                className="mt-3 text-sm text-green-700 hover:text-green-800 font-semibold underline"
+                className="mt-4 text-sm text-success-700 hover:text-success-800 font-bold underline flex items-center group"
               >
-                View All Results →
+                View All Results 
+                <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
               </button>
             )}
           </div>
         )}
         
         {error && (
-          <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+          <div className="mt-8 p-5 bg-danger-50 border-l-4 border-danger-500 rounded-xl shadow-soft animate-slide-in">
             <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-6 h-6 text-danger-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
-              <p className="text-red-800 font-medium">{error}</p>
+              <p className="text-danger-800 font-bold text-lg">{error}</p>
             </div>
           </div>
         )}
@@ -252,26 +255,26 @@ function ResultsDisplay({ resultId }) {
   const suggestions = result.improvement_suggestions ? result.improvement_suggestions.split(';').map(s => s.trim()).filter(s => s) : [];
 
   return (
-    <div className="mt-8 border-t-2 border-gray-200 pt-8">
-      <h3 className="text-2xl font-bold text-gray-800 mb-6">Analysis Results</h3>
+    <div className="mt-8 border-t-2 border-gray-200 pt-8 animate-fade-in">
+      <h3 className="text-3xl font-bold text-gray-800 mb-6 gradient-text">Analysis Results</h3>
       
       {/* Overall Status */}
-      <div className={`p-6 rounded-xl mb-6 ${result.passed ? 'bg-green-50 border-2 border-green-200' : 'bg-red-50 border-2 border-red-200'}`}>
+      <div className={`p-8 rounded-xl mb-8 shadow-soft ${result.passed ? 'bg-success-50 border-2 border-success-200' : 'bg-danger-50 border-2 border-danger-200'}`}>
         <div className="flex items-center justify-between">
           <div>
-            <h4 className={`text-xl font-bold ${result.passed ? 'text-green-800' : 'text-red-800'}`}>
+            <h4 className={`text-2xl font-bold ${result.passed ? 'text-success-800' : 'text-danger-800'}`}>
               {result.passed ? '✓ PASSED' : '✗ FAILED'}
             </h4>
-            <p className={`mt-1 ${result.passed ? 'text-green-700' : 'text-red-700'}`}>
+            <p className={`mt-2 text-lg ${result.passed ? 'text-success-700' : 'text-danger-700'}`}>
               {result.reason}
             </p>
           </div>
           {result.passed ? (
-            <svg className="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-20 h-20 text-success-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ) : (
-            <svg className="w-16 h-16 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-20 h-20 text-danger-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           )}
@@ -279,10 +282,10 @@ function ResultsDisplay({ resultId }) {
       </div>
 
       {/* Quality Checklist */}
-      <div className="grid md:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white border rounded-xl p-6">
-          <h4 className="font-semibold text-gray-800 mb-4 flex items-center">
-            <svg className="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div className="card border-2 border-primary-100 p-6">
+          <h4 className="font-bold text-gray-800 mb-4 flex items-center text-lg">
+            <svg className="w-6 h-6 mr-2 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
             Quality Metrics
@@ -297,9 +300,9 @@ function ResultsDisplay({ resultId }) {
           </div>
         </div>
 
-        <div className="bg-white border rounded-xl p-6">
-          <h4 className="font-semibold text-gray-800 mb-4 flex items-center">
-            <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="card border-2 border-secondary-100 p-6">
+          <h4 className="font-bold text-gray-800 mb-4 flex items-center text-lg">
+            <svg className="w-6 h-6 mr-2 text-secondary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
             </svg>
             Ecommerce Standards
@@ -318,18 +321,18 @@ function ResultsDisplay({ resultId }) {
 
       {/* Improvement Suggestions */}
       {suggestions.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-          <h4 className="font-semibold text-blue-900 mb-4 flex items-center">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-primary-50 border-2 border-primary-200 rounded-xl p-6 shadow-soft">
+          <h4 className="font-bold text-primary-900 mb-4 flex items-center text-lg">
+            <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Improvement Suggestions
           </h4>
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {suggestions.map((suggestion, idx) => (
-              <li key={idx} className="flex items-start text-blue-800">
-                <span className="mr-2 text-blue-600">•</span>
-                <span>{suggestion}</span>
+              <li key={idx} className="flex items-start text-primary-900">
+                <span className="mr-3 text-primary-600 font-bold text-lg">•</span>
+                <span className="text-base">{suggestion}</span>
               </li>
             ))}
           </ul>
@@ -341,16 +344,16 @@ function ResultsDisplay({ resultId }) {
 
 function MetricRow({ label, value, passed }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-      <span className="text-sm text-gray-600">{label}</span>
-      <div className="flex items-center">
-        <span className="text-sm font-semibold text-gray-800 mr-2">{value}</span>
+    <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+      <span className="text-sm text-gray-700 font-medium">{label}</span>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-bold text-gray-900">{value}</span>
         {passed ? (
-          <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-5 h-5 text-success-500" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
           </svg>
         ) : (
-          <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-5 h-5 text-danger-500" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
           </svg>
         )}
