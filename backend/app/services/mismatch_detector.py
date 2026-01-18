@@ -6,6 +6,7 @@ their descriptions using a pretrained multimodal CLIP model.
 """
 
 import logging
+import os
 from typing import Tuple, Optional
 import torch
 from PIL import Image
@@ -17,6 +18,9 @@ logger = logging.getLogger(__name__)
 # Global model cache to avoid reloading on every request
 _model_cache = {}
 
+# Set offline mode environment variable to speed up failures
+os.environ["TRANSFORMERS_OFFLINE"] = "0"  # Try online first, then fail fast
+
 
 def get_clip_model():
     """
@@ -24,18 +28,29 @@ def get_clip_model():
     
     Returns:
         Tuple[CLIPModel, CLIPProcessor]: The loaded model and processor
+        
+    Raises:
+        Exception: If model cannot be loaded
     """
     if 'model' not in _model_cache:
         logger.info(f"Loading CLIP model: {CLIP_MODEL_NAME}")
         try:
-            model = CLIPModel.from_pretrained(CLIP_MODEL_NAME)
-            processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME)
+            # Try to load from local cache only (fail fast if not available)
+            model = CLIPModel.from_pretrained(CLIP_MODEL_NAME, local_files_only=True)
+            processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME, local_files_only=True)
             _model_cache['model'] = model
             _model_cache['processor'] = processor
-            logger.info("CLIP model loaded successfully")
+            logger.info("CLIP model loaded successfully from local cache")
         except Exception as e:
-            logger.error(f"Failed to load CLIP model: {str(e)}", exc_info=True)
-            raise
+            logger.info(f"CLIP model not available locally: {type(e).__name__}")
+            # Mark model as unavailable - don't retry downloading
+            _model_cache['model'] = None
+            _model_cache['processor'] = None
+            raise Exception("CLIP model is not available locally. Image-text mismatch detection will be skipped.") from e
+    
+    # Check if model loading previously failed
+    if _model_cache.get('model') is None:
+        raise Exception("CLIP model is not available. Image-text mismatch detection will be skipped.")
     
     return _model_cache['model'], _model_cache['processor']
 
@@ -103,10 +118,15 @@ def detect_mismatch(image_path: str, description: str, threshold: Optional[float
         
     except FileNotFoundError:
         logger.error(f"Image file not found: {image_path}")
-        return False, 0.0, "Image file not found"
+        raise Exception(f"Image file not found: {image_path}")
     except Exception as e:
-        logger.error(f"Error in mismatch detection: {str(e)}", exc_info=True)
-        return False, 0.0, f"Error: {str(e)}"
+        error_msg = str(e)
+        logger.warning(f"Mismatch detection unavailable: {error_msg}")
+        # If CLIP model is unavailable, return gracefully without failing the upload
+        if "CLIP model is not available" in error_msg or "not available" in error_msg.lower():
+            return False, None, "Image-text mismatch detection is unavailable"
+        # For other errors, return None to indicate the feature is unavailable
+        return False, None, "Image-text mismatch detection is unavailable"
 
 
 def check_image_text_similarity(image_path: str, description: str, threshold: Optional[float] = None) -> dict:
@@ -128,7 +148,7 @@ def check_image_text_similarity(image_path: str, description: str, threshold: Op
     
     return {
         "has_mismatch": is_mismatch,
-        "similarity_score": similarity_score,
+        "similarity_score": similarity_score,  # Can be None if detection unavailable
         "threshold": threshold,
         "message": message,
         "description_provided": bool(description and description.strip())

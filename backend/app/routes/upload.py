@@ -110,10 +110,19 @@ async def upload_image(
         if description and description.strip():
             try:
                 mismatch_result = check_image_text_similarity(file_path, description)
-                logger.info(f"Mismatch detection: {mismatch_result['message']}")
+                # Only log if mismatch detection was successful (similarity_score is not None)
+                if mismatch_result["similarity_score"] is not None:
+                    logger.info(f"Mismatch detection: {mismatch_result['message']}")
+                else:
+                    logger.info("Mismatch detection unavailable - skipping")
             except Exception as e:
                 logger.warning(f"Mismatch detection failed, continuing without it: {str(e)}")
-                # Continue even if mismatch detection fails
+                # Set mismatch_result to indicate detection is unavailable
+                mismatch_result = {
+                    "has_mismatch": False,
+                    "similarity_score": None,
+                    "message": "Image-text mismatch detection is unavailable"
+                }
 
         # Store result in database with unique filename (not original)
         result = ImageResult(
@@ -159,9 +168,17 @@ async def upload_image(
             except Exception as cleanup_error:
                 logger.error(f"Error cleaning up file {file_path}: {str(cleanup_error)}")
         
-        # Log the error internally but return generic message to user
-        logger.error(f"Upload error: {str(e)}", exc_info=True)
+        # Log the error internally with full details
+        logger.error(f"Upload error for file {file.filename}: {str(e)}", exc_info=True)
+        
+        # Return a more specific error message based on the error type
+        error_detail = "An error occurred during upload. Please try again."
+        if "database" in str(e).lower() or "sql" in str(e).lower():
+            error_detail = "Database error occurred. Please try again later."
+        elif "permission" in str(e).lower() or "access" in str(e).lower():
+            error_detail = "File access error. Please try again."
+        
         raise HTTPException(
             status_code=500,
-            detail="An error occurred during upload. Please try again."
+            detail=error_detail
         )

@@ -109,6 +109,14 @@ async def check_mismatch(
         # Run mismatch detection
         result = check_image_text_similarity(file_path, description, threshold)
         
+        # Check if mismatch detection is available
+        if result["similarity_score"] is None:
+            logger.warning("Mismatch detection unavailable, returning appropriate response")
+            raise HTTPException(
+                status_code=503,
+                detail="Image-text mismatch detection is currently unavailable. The AI model required for this feature is not accessible. Please try basic image quality analysis instead."
+            )
+        
         logger.info(f"Mismatch check complete: {result['message']}")
         
         return {
@@ -141,10 +149,16 @@ async def check_mismatch(
             except Exception as cleanup_error:
                 logger.error(f"Error cleaning up file {file_path}: {str(cleanup_error)}")
         
-        logger.error(f"Mismatch detection error: {str(e)}", exc_info=True)
+        logger.error(f"Mismatch detection error for file {file.filename}: {str(e)}", exc_info=True)
+        
+        # Return a more specific error message
+        error_detail = "An error occurred during mismatch detection. Please try again."
+        if "model" in str(e).lower() or "clip" in str(e).lower():
+            error_detail = "AI model error. The mismatch detection service is temporarily unavailable."
+        
         raise HTTPException(
             status_code=500,
-            detail="An error occurred during mismatch detection. Please try again."
+            detail=error_detail
         )
     finally:
         # Always clean up the temporary file
