@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import logging
+import os
 from skimage import exposure
 from ..config import (
     MIN_WIDTH, MIN_HEIGHT, BLUR_THRESHOLD, MIN_BRIGHTNESS, MAX_BRIGHTNESS,
@@ -10,13 +11,14 @@ from ..config import (
 
 logger = logging.getLogger(__name__)
 
-def analyze_image(path: str, description: str = None):
+def analyze_image(path: str, description: str = None, use_clip: bool = True):
     """
     Analyze image quality metrics for ecommerce product listing.
     
     Args:
         path: File system path to the image file
         description: Optional product description for consistency check
+        use_clip: Whether to use CLIP for description consistency (default: True)
         
     Returns:
         dict: Comprehensive analysis results including all ecommerce metrics
@@ -53,6 +55,31 @@ def analyze_image(path: str, description: str = None):
     
     # Description consistency
     description_consistency = check_description_consistency(description, image, path)
+    
+    # CLIP-based description consistency (if enabled and description provided)
+    clip_similarity_score = None
+    clip_mismatch = None
+    
+    if use_clip and description and description.strip():
+        try:
+            # Import here to avoid loading CLIP if not needed
+            from .clip_service import check_mismatch_clip
+            
+            clip_result = check_mismatch_clip(path, description)
+            clip_similarity_score = clip_result.get('similarity_score')
+            
+            # True if mismatch detected (is_match is False)
+            if clip_result.get('is_match') is not None:
+                clip_mismatch = not clip_result.get('is_match')
+            
+            # Update description consistency based on CLIP if available
+            if clip_mismatch:
+                description_consistency = f"CLIP detected mismatch (score: {clip_similarity_score:.3f})"
+            elif clip_result.get('is_match'):
+                description_consistency = f"CLIP verified match (score: {clip_similarity_score:.3f})"
+        except Exception as e:
+            logger.warning(f"CLIP check failed, falling back to heuristic: {str(e)}")
+            # Continue with heuristic-based consistency check
     
     # Quality checks
     reasons = []
@@ -123,7 +150,9 @@ def analyze_image(path: str, description: str = None):
         "background_score": background_score,
         "has_watermark": has_watermark,
         "description_consistency": description_consistency,
-        "improvement_suggestions": improvement_suggestions
+        "improvement_suggestions": improvement_suggestions,
+        "clip_similarity_score": clip_similarity_score,
+        "clip_mismatch": clip_mismatch
     }
 
 

@@ -4,6 +4,7 @@ from .database import Base, engine
 from .routes.upload import router as upload_router
 from .routes.analyze import router as analyze_router
 from .routes.results import router as results_router
+from .routes.clip import router as clip_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -27,6 +28,7 @@ app.add_middleware(
 app.include_router(upload_router, tags=["Upload"])
 app.include_router(analyze_router, tags=["Analysis"])
 app.include_router(results_router, tags=["Results"])
+app.include_router(clip_router, tags=["CLIP"])
 
 
 @app.get("/", tags=["Health"])

@@ -22,3 +22,7 @@ class ImageResult(Base):
     has_watermark = Column(Boolean, default=False)
     description_consistency = Column(String, nullable=True)
     improvement_suggestions = Column(Text, nullable=True)
+    
+    # CLIP fields
+    clip_similarity_score = Column(Float, nullable=True)
+    clip_mismatch = Column(Boolean, nullable=True)
