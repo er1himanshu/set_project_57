@@ -17,6 +17,14 @@ logger = logging.getLogger(__name__)
 # Global model cache to avoid reloading on every request
 _model_cache = {}
 
+# Error message constant
+MISMATCH_DETECTION_UNAVAILABLE_MSG = "Image-text mismatch detection is unavailable"
+
+
+class MismatchDetectionUnavailableError(Exception):
+    """Raised when mismatch detection is not available (e.g., model not loaded)."""
+    pass
+
 
 def get_clip_model():
     """
@@ -24,23 +32,38 @@ def get_clip_model():
     
     Returns:
         Tuple[CLIPModel, CLIPProcessor]: The loaded model and processor
+        
+    Raises:
+        MismatchDetectionUnavailableError: If model cannot be loaded
     """
     if 'model' not in _model_cache:
         logger.info(f"Loading CLIP model: {CLIP_MODEL_NAME}")
         try:
-            model = CLIPModel.from_pretrained(CLIP_MODEL_NAME)
-            processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME)
+            # Try to load from local cache only (fail fast if not available)
+            model = CLIPModel.from_pretrained(CLIP_MODEL_NAME, local_files_only=True)
+            processor = CLIPProcessor.from_pretrained(CLIP_MODEL_NAME, local_files_only=True)
             _model_cache['model'] = model
             _model_cache['processor'] = processor
-            logger.info("CLIP model loaded successfully")
+            logger.info("CLIP model loaded successfully from local cache")
         except Exception as e:
-            logger.error(f"Failed to load CLIP model: {str(e)}", exc_info=True)
-            raise
+            logger.info(f"CLIP model not available locally: {type(e).__name__}")
+            # Mark model as unavailable - don't retry downloading
+            _model_cache['model'] = None
+            _model_cache['processor'] = None
+            raise MismatchDetectionUnavailableError(
+                "CLIP model is not available locally. Image-text mismatch detection will be skipped."
+            ) from e
+    
+    # Check if model loading previously failed
+    if _model_cache.get('model') is None:
+        raise MismatchDetectionUnavailableError(
+            "CLIP model is not available. Image-text mismatch detection will be skipped."
+        )
     
     return _model_cache['model'], _model_cache['processor']
 
 
-def detect_mismatch(image_path: str, description: str, threshold: Optional[float] = None) -> Tuple[bool, float, str]:
+def detect_mismatch(image_path: str, description: str, threshold: Optional[float] = None) -> Tuple[bool, Optional[float], str]:
     """
     Detect if there's a mismatch between an image and its description using CLIP.
     
@@ -50,9 +73,9 @@ def detect_mismatch(image_path: str, description: str, threshold: Optional[float
         threshold: Optional custom threshold for mismatch detection
         
     Returns:
-        Tuple[bool, float, str]: 
-            - is_mismatch: True if mismatch detected
-            - similarity_score: Similarity score between 0 and 1
+        Tuple[bool, Optional[float], str]: 
+            - is_mismatch: True if mismatch detected, False otherwise
+            - similarity_score: Similarity score between 0 and 1, or None if detection unavailable
             - message: Human-readable message about the result
     """
     # Handle empty or missing description
@@ -101,12 +124,17 @@ def detect_mismatch(image_path: str, description: str, threshold: Optional[float
         
         return is_mismatch, float(similarity_score), message
         
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         logger.error(f"Image file not found: {image_path}")
-        return False, 0.0, "Image file not found"
+        raise FileNotFoundError(f"Image file not found: {image_path}") from e
+    except MismatchDetectionUnavailableError:
+        # CLIP model is unavailable - return gracefully without failing
+        logger.warning("Mismatch detection unavailable: CLIP model not loaded")
+        return False, None, MISMATCH_DETECTION_UNAVAILABLE_MSG
     except Exception as e:
-        logger.error(f"Error in mismatch detection: {str(e)}", exc_info=True)
-        return False, 0.0, f"Error: {str(e)}"
+        # For other errors, log and return unavailable status
+        logger.warning(f"Mismatch detection failed: {type(e).__name__}: {str(e)}")
+        return False, None, MISMATCH_DETECTION_UNAVAILABLE_MSG
 
 
 def check_image_text_similarity(image_path: str, description: str, threshold: Optional[float] = None) -> dict:
@@ -128,7 +156,7 @@ def check_image_text_similarity(image_path: str, description: str, threshold: Op
     
     return {
         "has_mismatch": is_mismatch,
-        "similarity_score": similarity_score,
+        "similarity_score": similarity_score,  # Can be None if detection unavailable
         "threshold": threshold,
         "message": message,
         "description_provided": bool(description and description.strip())

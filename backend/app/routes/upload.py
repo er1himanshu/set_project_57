@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from ..database import SessionLocal
 from ..services.storage import save_upload
 from ..services.image_quality import analyze_image
@@ -110,10 +111,19 @@ async def upload_image(
         if description and description.strip():
             try:
                 mismatch_result = check_image_text_similarity(file_path, description)
-                logger.info(f"Mismatch detection: {mismatch_result['message']}")
+                # Only log if mismatch detection was successful (similarity_score is not None)
+                if mismatch_result["similarity_score"] is not None:
+                    logger.info(f"Mismatch detection: {mismatch_result['message']}")
+                else:
+                    logger.info("Mismatch detection unavailable - skipping")
             except Exception as e:
                 logger.warning(f"Mismatch detection failed, continuing without it: {str(e)}")
-                # Continue even if mismatch detection fails
+                # Set mismatch_result to indicate detection is unavailable
+                mismatch_result = {
+                    "has_mismatch": False,
+                    "similarity_score": None,
+                    "message": "Image-text mismatch detection is unavailable"
+                }
 
         # Store result in database with unique filename (not original)
         result = ImageResult(
@@ -151,16 +161,43 @@ async def upload_image(
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
-    except Exception as e:
-        # Clean up file on any error
+    except SQLAlchemyError as e:
+        # Database-specific errors
         if file_path and os.path.exists(file_path):
             try:
                 os.remove(file_path)
             except Exception as cleanup_error:
                 logger.error(f"Error cleaning up file {file_path}: {str(cleanup_error)}")
         
-        # Log the error internally but return generic message to user
-        logger.error(f"Upload error: {str(e)}", exc_info=True)
+        logger.error(f"Database error for file {file.filename}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Database error occurred. Please try again later."
+        )
+    except PermissionError as e:
+        # File system permission errors
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+        
+        logger.error(f"Permission error for file {file.filename}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="File access error. Please try again."
+        )
+    except Exception as e:
+        # Clean up file on any other error
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as cleanup_error:
+                logger.error(f"Error cleaning up file {file_path}: {str(cleanup_error)}")
+        
+        # Log the error internally with full details
+        logger.error(f"Upload error for file {file.filename}: {str(e)}", exc_info=True)
+        
         raise HTTPException(
             status_code=500,
             detail="An error occurred during upload. Please try again."

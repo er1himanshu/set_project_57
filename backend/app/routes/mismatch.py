@@ -9,7 +9,7 @@ from typing import Optional
 import logging
 
 from ..services.storage import save_upload
-from ..services.mismatch_detector import check_image_text_similarity
+from ..services.mismatch_detector import check_image_text_similarity, MismatchDetectionUnavailableError
 from ..config import MAX_FILE_SIZE, ALLOWED_EXTENSIONS, MISMATCH_THRESHOLD
 
 router = APIRouter()
@@ -109,6 +109,14 @@ async def check_mismatch(
         # Run mismatch detection
         result = check_image_text_similarity(file_path, description, threshold)
         
+        # Check if mismatch detection is available
+        if result["similarity_score"] is None:
+            logger.warning("Mismatch detection unavailable, returning appropriate response")
+            raise HTTPException(
+                status_code=503,
+                detail="Image-text mismatch detection is currently unavailable. The AI model required for this feature is not accessible. Please try basic image quality analysis instead."
+            )
+        
         logger.info(f"Mismatch check complete: {result['message']}")
         
         return {
@@ -133,6 +141,32 @@ async def check_mismatch(
             except Exception:
                 pass
         raise
+    except MismatchDetectionUnavailableError as e:
+        # CLIP model unavailable - return specific error
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+        
+        logger.warning(f"Mismatch detection unavailable for file {file.filename}: {str(e)}")
+        raise HTTPException(
+            status_code=503,
+            detail="Image-text mismatch detection is currently unavailable. The AI model required for this feature is not accessible. Please try basic image quality analysis instead."
+        )
+    except FileNotFoundError as e:
+        # File not found error
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+        
+        logger.error(f"Image file error for {file.filename}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=400,
+            detail="Image file could not be processed."
+        )
     except Exception as e:
         # Clean up file on any error
         if file_path and os.path.exists(file_path):
@@ -141,7 +175,7 @@ async def check_mismatch(
             except Exception as cleanup_error:
                 logger.error(f"Error cleaning up file {file_path}: {str(cleanup_error)}")
         
-        logger.error(f"Mismatch detection error: {str(e)}", exc_info=True)
+        logger.error(f"Mismatch detection error for file {file.filename}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="An error occurred during mismatch detection. Please try again."

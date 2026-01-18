@@ -270,6 +270,8 @@ MISMATCH_THRESHOLD = 0.25     # Similarity threshold (0-1, lower = stricter)
 CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"  # CLIP model to use
 ```
 
+**Note**: The image-text mismatch detection feature requires the CLIP model to be available locally. If the model is not cached and cannot be downloaded (e.g., in offline/sandboxed environments), the feature will be gracefully skipped and uploads will continue successfully without mismatch detection. The image quality analysis will still be performed normally.
+
 ### Frontend Configuration
 
 Edit `frontend/src/api/client.js` to change the API endpoint:
