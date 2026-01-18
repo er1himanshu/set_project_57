@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean
+from sqlalchemy import Column, Integer, String, Float, Boolean, Text
 from .database import Base
 
 class ImageResult(Base):
@@ -13,3 +13,12 @@ class ImageResult(Base):
     contrast_score = Column(Float)
     passed = Column(Boolean, default=False)
     reason = Column(String)
+    
+    # New ecommerce fields
+    description = Column(Text, nullable=True)
+    aspect_ratio = Column(Float, nullable=True)
+    sharpness_score = Column(Float, nullable=True)
+    background_score = Column(Float, nullable=True)
+    has_watermark = Column(Boolean, default=False)
+    description_consistency = Column(String, nullable=True)
+    improvement_suggestions = Column(Text, nullable=True)
