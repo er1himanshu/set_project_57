@@ -4,9 +4,12 @@ const API = axios.create({
   baseURL: "http://localhost:8000"
 });
 
+// Maximum length for error messages before truncating to generic message
+const MAX_ERROR_MESSAGE_LENGTH = 200;
+
 /**
  * Extract a user-friendly error message from various error response formats
- * @param {Error} error - The error object from axios
+ * @param {import('axios').AxiosError} error - The error object from axios
  * @returns {string} A user-friendly error message
  */
 const extractErrorMessage = (error) => {
@@ -20,7 +23,7 @@ const extractErrorMessage = (error) => {
   // Handle non-JSON responses (e.g., HTML error pages)
   if (typeof data === 'string') {
     // If it's HTML or very long, return a generic message
-    if (data.includes('<!DOCTYPE') || data.includes('<html') || data.length > 200) {
+    if (data.includes('<!DOCTYPE') || data.includes('<html') || data.length > MAX_ERROR_MESSAGE_LENGTH) {
       return `Server error (${status}). Please try again.`;
     }
     return data;
@@ -34,7 +37,7 @@ const extractErrorMessage = (error) => {
       const messages = data.detail.map(err => {
         if (err.msg) return err.msg;
         if (err.message) return err.message;
-        return JSON.stringify(err);
+        return 'Invalid input';
       });
       return messages.join('; ');
     }
