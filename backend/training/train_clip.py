@@ -65,13 +65,21 @@ class CLIPFineTuner:
         self.model = CLIPModel.from_pretrained(model_name)
         self.model.to(self.device)
         
+        # Get embedding dimension from model config
+        self.embedding_dim = self.model.config.projection_dim  # Typically 512 for base
+        
         # Add classification head on top of CLIP
+        # Input: concatenated [image_embed, text_embed, similarity]
+        # Size: embedding_dim + embedding_dim + 1
+        input_dim = self.embedding_dim * 2 + 1
         self.classification_head = nn.Sequential(
-            nn.Linear(512, 256),  # CLIP base outputs 512-dim embeddings
+            nn.Linear(input_dim, 256),
             nn.ReLU(),
             nn.Dropout(0.1),
             nn.Linear(256, 2)  # Binary classification (match/mismatch)
         ).to(self.device)
+        
+        logger.info(f"Classification head input dim: {input_dim}")
         
         # Setup optimizer
         self.optimizer = AdamW(
@@ -113,8 +121,7 @@ class CLIPFineTuner:
             # Get CLIP embeddings
             outputs = self.model(**inputs)
             
-            # Use image-text similarity as features
-            # Shape: [batch_size]
+            # Get normalized embeddings
             image_embeds = outputs.image_embeds
             text_embeds = outputs.text_embeds
             
@@ -127,13 +134,6 @@ class CLIPFineTuner:
             
             # Concatenate features
             features = torch.cat([image_embeds, text_embeds, similarity], dim=-1)
-            
-            # Adjust classification head if needed
-            if not hasattr(self, '_head_adjusted'):
-                input_dim = features.shape[-1]
-                self.classification_head[0] = nn.Linear(input_dim, 256).to(self.device)
-                self._head_adjusted = True
-                logger.info(f"Adjusted classification head input dim to {input_dim}")
             
             # Classification
             logits = self.classification_head(features)

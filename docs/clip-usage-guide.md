@@ -52,8 +52,8 @@ Create a `.env` file or set environment variables:
 # Optional: Specify custom model path
 export CLIP_FINE_TUNED_MODEL_PATH=/path/to/fine_tuned_model
 
-# Optional: Adjust threshold (default: 0.25)
-export CLIP_SIMILARITY_THRESHOLD=0.3
+# Optional: Adjust threshold (default: 0.6)
+export CLIP_SIMILARITY_THRESHOLD=0.7
 
 # Optional: Force CPU or use GPU
 export CLIP_DEVICE=cuda  # or 'cpu'
@@ -270,7 +270,7 @@ Edit `backend/app/config.py`:
 # CLIP Configuration
 CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"
 CLIP_FINE_TUNED_MODEL_PATH = None  # Set to model path
-CLIP_SIMILARITY_THRESHOLD = 0.25
+CLIP_SIMILARITY_THRESHOLD = 0.6  # Updated default
 CLIP_DEVICE = "cpu"  # or "cuda"
 CLIP_CACHE_DIR = os.path.join(BASE_DIR, "clip_models")
 ```
@@ -291,18 +291,18 @@ The threshold determines when to classify as match vs. mismatch.
 
 ### Understanding Thresholds
 
-**Lower Threshold (0.15-0.25):**
+**Lower Threshold (0.4-0.5):**
 - ✅ Catches more mismatches (high recall)
 - ❌ More false positives (may flag valid matches)
 - Use when: False negatives are costly (missing mismatches is bad)
 
-**Higher Threshold (0.3-0.4):**
+**Higher Threshold (0.7-0.8):**
 - ✅ Fewer false positives (high precision)
 - ❌ May miss some mismatches (lower recall)
 - Use when: False positives are costly (flagging valid matches is bad)
 
-**Balanced Threshold (0.25-0.3):**
-- Default recommendation
+**Balanced Threshold (0.5-0.7):**
+- Default recommendation (0.6)
 - Good trade-off for most use cases
 
 ### Tuning Process
@@ -323,7 +323,7 @@ from sklearn.metrics import classification_report
 val_data = pd.read_csv('val.csv')
 
 # Test different thresholds
-thresholds = [0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+thresholds = [0.4, 0.5, 0.6, 0.7, 0.75, 0.8]
 
 for threshold in thresholds:
     predictions = []

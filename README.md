@@ -182,7 +182,7 @@ Images are evaluated against the following ecommerce standards:
 | **Background** | ≥ 70% | Clean/white background score |
 | **Watermarks** | None | No text overlays or watermarks |
 | **Description** | Consistent | CLIP-based semantic matching |
-| **CLIP Similarity** | ≥ 0.25 | AI-powered image-text similarity score |
+| **CLIP Similarity** | ≥ 0.6 | AI-powered image-text similarity score |
 
 ### Response Schema
 
@@ -279,7 +279,7 @@ MIN_BACKGROUND_SCORE = 0.7    # Background quality threshold
 
 # CLIP Configuration
 CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"  # CLIP model
-CLIP_SIMILARITY_THRESHOLD = 0.25  # Mismatch detection threshold
+CLIP_SIMILARITY_THRESHOLD = 0.6  # Mismatch detection threshold
 CLIP_DEVICE = "cpu"  # Use "cuda" for GPU acceleration
 ```
 

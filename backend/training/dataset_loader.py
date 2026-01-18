@@ -107,8 +107,8 @@ class ImageTextDataset(Dataset):
             
         except Exception as e:
             logger.error(f"Error loading sample {idx} (image: {image_path}): {str(e)}")
-            # Return a dummy sample to avoid breaking training
-            # In production, you might want to skip invalid samples instead
+            # Re-raise the exception to fail fast on data issues
+            # This ensures data quality problems are caught during training setup
             raise
 
 

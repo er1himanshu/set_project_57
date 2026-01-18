@@ -128,16 +128,22 @@ class CLIPMismatchDetector:
             with torch.no_grad():
                 outputs = self.model(**inputs)
                 
-                # Get similarity score (cosine similarity)
-                # Shape: [1, 1] for single image-text pair
-                logits_per_image = outputs.logits_per_image
+                # Get similarity score using cosine similarity
+                # CLIP outputs logits_per_image which are already similarity scores
+                # scaled by a learned temperature parameter
+                image_embeds = outputs.image_embeds
+                text_embeds = outputs.text_embeds
                 
-                # Apply softmax to get probability-like scores
-                # For single text, this is essentially the raw similarity scaled by temperature
-                probs = logits_per_image.softmax(dim=1)
+                # Normalize embeddings
+                image_embeds = image_embeds / image_embeds.norm(dim=-1, keepdim=True)
+                text_embeds = text_embeds / text_embeds.norm(dim=-1, keepdim=True)
                 
-                # Extract similarity score
-                similarity_score = probs[0][0].item()
+                # Compute cosine similarity (range: -1 to 1)
+                cosine_similarity = (image_embeds * text_embeds).sum(dim=-1)
+                
+                # Normalize to 0-1 range for easier interpretation
+                # (cosine_similarity + 1) / 2 maps [-1, 1] to [0, 1]
+                similarity_score = ((cosine_similarity + 1) / 2).item()
             
             logger.info(f"CLIP similarity score: {similarity_score:.4f}")
             return float(similarity_score)

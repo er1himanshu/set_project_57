@@ -33,6 +33,6 @@ MAX_PIXELS_FOR_COLOR_SAMPLING = 10000  # Maximum pixels to sample for color anal
 # CLIP Configuration
 CLIP_MODEL_NAME = os.getenv("CLIP_MODEL_NAME", "openai/clip-vit-base-patch32")  # Default CLIP model
 CLIP_FINE_TUNED_MODEL_PATH = os.getenv("CLIP_FINE_TUNED_MODEL_PATH", None)  # Path to fine-tuned model
-CLIP_SIMILARITY_THRESHOLD = float(os.getenv("CLIP_SIMILARITY_THRESHOLD", "0.25"))  # Threshold for mismatch detection
+CLIP_SIMILARITY_THRESHOLD = float(os.getenv("CLIP_SIMILARITY_THRESHOLD", "0.6"))  # Threshold for mismatch detection
 CLIP_DEVICE = os.getenv("CLIP_DEVICE", "cpu")  # Device for CLIP inference (cpu or cuda)
 CLIP_CACHE_DIR = os.path.join(BASE_DIR, "clip_models")  # Cache directory for CLIP models
