@@ -20,6 +20,11 @@ class ImageResultSchema(BaseModel):
     has_watermark: Optional[bool] = False
     description_consistency: Optional[str] = None
     improvement_suggestions: Optional[str] = None
+    
+    # Image-text mismatch detection fields
+    has_mismatch: Optional[bool] = False
+    similarity_score: Optional[float] = None
+    mismatch_message: Optional[str] = None
 
     class Config:
         from_attributes = True

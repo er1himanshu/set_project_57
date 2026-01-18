@@ -22,3 +22,8 @@ class ImageResult(Base):
     has_watermark = Column(Boolean, default=False)
     description_consistency = Column(String, nullable=True)
     improvement_suggestions = Column(Text, nullable=True)
+    
+    # Image-text mismatch detection fields
+    has_mismatch = Column(Boolean, default=False)
+    similarity_score = Column(Float, nullable=True)
+    mismatch_message = Column(String, nullable=True)

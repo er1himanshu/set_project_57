@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from ..database import SessionLocal
 from ..services.storage import save_upload
 from ..services.image_quality import analyze_image
+from ..services.mismatch_detector import check_image_text_similarity
 from ..models import ImageResult
 from ..config import MAX_FILE_SIZE, ALLOWED_EXTENSIONS
 from typing import Optional
@@ -103,6 +104,16 @@ async def upload_image(
                 status_code=400,
                 detail="Invalid or corrupted image file. Please upload a valid image."
             )
+        
+        # Run mismatch detection if description provided
+        mismatch_result = None
+        if description and description.strip():
+            try:
+                mismatch_result = check_image_text_similarity(file_path, description)
+                logger.info(f"Mismatch detection: {mismatch_result['message']}")
+            except Exception as e:
+                logger.warning(f"Mismatch detection failed, continuing without it: {str(e)}")
+                # Continue even if mismatch detection fails
 
         # Store result in database with unique filename (not original)
         result = ImageResult(
@@ -120,7 +131,10 @@ async def upload_image(
             background_score=analysis.get("background_score"),
             has_watermark=analysis.get("has_watermark", False),
             description_consistency=analysis.get("description_consistency"),
-            improvement_suggestions=analysis.get("improvement_suggestions")
+            improvement_suggestions=analysis.get("improvement_suggestions"),
+            has_mismatch=mismatch_result["has_mismatch"] if mismatch_result else False,
+            similarity_score=mismatch_result["similarity_score"] if mismatch_result else None,
+            mismatch_message=mismatch_result["message"] if mismatch_result else None
         )
         db.add(result)
         db.commit()
