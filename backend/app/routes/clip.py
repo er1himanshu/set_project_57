@@ -166,13 +166,30 @@ async def analyze_batch(
         
         logger.info(f"Batch analysis complete for {len(results)} items")
         
+        # Separate successful results from errors
+        successful_results = []
+        error_results = []
+        
+        for i, r in enumerate(results):
+            if 'error' in r:
+                error_results.append({
+                    "index": i,
+                    "error": r['error'],
+                    "image_path": image_paths[i]
+                })
+            else:
+                # Only include fields that are part of CLIPAnalysisResponse schema
+                successful_results.append(CLIPAnalysisResponse(
+                    is_mismatch=r['is_mismatch'],
+                    similarity_score=r['similarity_score'],
+                    threshold_used=r['threshold_used'],
+                    confidence=r['confidence'],
+                    match_quality=r['match_quality']
+                ))
+        
         return {
-            "results": [CLIPAnalysisResponse(**r) for r in results if 'error' not in r],
-            "errors": [
-                {"index": i, "error": r.get('error')}
-                for i, r in enumerate(results)
-                if 'error' in r
-            ]
+            "results": successful_results,
+            "errors": error_results
         }
         
     except Exception as e:

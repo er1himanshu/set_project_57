@@ -185,11 +185,22 @@ def main():
     logger.info(f"  Learning rate: {args.learning_rate}")
     logger.info(f"  Device: {args.device or 'auto-detect'}")
     
-    trainer = CLIPTrainer(
-        model_name=args.model_name,
-        learning_rate=args.learning_rate,
-        device=args.device
-    )
+    try:
+        trainer = CLIPTrainer(
+            model_name=args.model_name,
+            learning_rate=args.learning_rate,
+            device=args.device
+        )
+    except Exception as e:
+        logger.error("Failed to initialize CLIP trainer!")
+        logger.error(f"Error: {str(e)}")
+        logger.error("\nPossible causes:")
+        logger.error("  - Model not available or incorrect model name")
+        logger.error("  - Missing dependencies (torch, transformers)")
+        logger.error("  - Insufficient memory or CUDA issues")
+        logger.error(f"\nTried to load: {args.model_name}")
+        logger.error("Verify the model name is correct and dependencies are installed")
+        sys.exit(1)
     
     # Train model
     logger.info("\nStarting training...")

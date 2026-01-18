@@ -246,6 +246,55 @@ class CLIPTrainer:
         
         return history
     
+    def _compute_loss(
+        self,
+        pixel_values: torch.Tensor,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+        labels: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Compute binary cross-entropy loss for image-text matching.
+        
+        Args:
+            pixel_values: Image tensors
+            input_ids: Text input IDs
+            attention_mask: Text attention mask
+            labels: Match/mismatch labels (0 or 1)
+            
+        Returns:
+            torch.Tensor: BCE loss value
+        """
+        # Forward pass
+        outputs = self.model(
+            pixel_values=pixel_values,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            return_loss=False
+        )
+        
+        # Compute similarity scores
+        image_embeds = outputs.image_embeds
+        text_embeds = outputs.text_embeds
+        
+        # Normalize embeddings
+        image_embeds = image_embeds / image_embeds.norm(dim=-1, keepdim=True)
+        text_embeds = text_embeds / text_embeds.norm(dim=-1, keepdim=True)
+        
+        # Compute cosine similarity
+        similarity = (image_embeds * text_embeds).sum(dim=-1)
+        
+        # Binary cross-entropy loss
+        # similarity ranges from -1 to 1, convert to 0 to 1 for BCE
+        similarity_normalized = (similarity + 1) / 2
+        loss = torch.nn.functional.binary_cross_entropy(
+            similarity_normalized,
+            labels,
+            reduction='mean'
+        )
+        
+        return loss
+    
     def _train_epoch(self, dataloader: DataLoader) -> float:
         """
         Train for one epoch.
@@ -269,33 +318,8 @@ class CLIPTrainer:
             attention_mask = batch['attention_mask'].to(self.device)
             labels = batch['label'].to(self.device)
             
-            # Forward pass
-            outputs = self.model(
-                pixel_values=pixel_values,
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                return_loss=False
-            )
-            
-            # Compute similarity scores
-            image_embeds = outputs.image_embeds
-            text_embeds = outputs.text_embeds
-            
-            # Normalize embeddings
-            image_embeds = image_embeds / image_embeds.norm(dim=-1, keepdim=True)
-            text_embeds = text_embeds / text_embeds.norm(dim=-1, keepdim=True)
-            
-            # Compute cosine similarity
-            similarity = (image_embeds * text_embeds).sum(dim=-1)
-            
-            # Binary cross-entropy loss
-            # similarity ranges from -1 to 1, convert to 0 to 1 for BCE
-            similarity_normalized = (similarity + 1) / 2
-            loss = torch.nn.functional.binary_cross_entropy(
-                similarity_normalized,
-                labels,
-                reduction='mean'
-            )
+            # Compute loss
+            loss = self._compute_loss(pixel_values, input_ids, attention_mask, labels)
             
             # Backward pass
             self.optimizer.zero_grad()
@@ -335,32 +359,8 @@ class CLIPTrainer:
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['label'].to(self.device)
                 
-                # Forward pass
-                outputs = self.model(
-                    pixel_values=pixel_values,
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    return_loss=False
-                )
-                
-                # Compute similarity scores
-                image_embeds = outputs.image_embeds
-                text_embeds = outputs.text_embeds
-                
-                # Normalize embeddings
-                image_embeds = image_embeds / image_embeds.norm(dim=-1, keepdim=True)
-                text_embeds = text_embeds / text_embeds.norm(dim=-1, keepdim=True)
-                
-                # Compute cosine similarity
-                similarity = (image_embeds * text_embeds).sum(dim=-1)
-                
-                # Binary cross-entropy loss
-                similarity_normalized = (similarity + 1) / 2
-                loss = torch.nn.functional.binary_cross_entropy(
-                    similarity_normalized,
-                    labels,
-                    reduction='mean'
-                )
+                # Compute loss
+                loss = self._compute_loss(pixel_values, input_ids, attention_mask, labels)
                 
                 # Accumulate loss
                 total_loss += loss.item()

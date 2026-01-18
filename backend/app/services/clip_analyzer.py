@@ -266,11 +266,13 @@ class CLIPAnalyzer:
                     results.append(result)
                 except Exception as e:
                     logger.error(f"Error processing {img_path}: {str(e)}")
+                    # Append error result that won't be converted to response
                     results.append({
-                        'is_mismatch': None,
-                        'similarity_score': None,
+                        'is_mismatch': True,  # Default to mismatch on error
+                        'similarity_score': 0.0,  # Lowest possible score
                         'threshold_used': CLIP_SIMILARITY_THRESHOLD,
                         'confidence': 'error',
+                        'match_quality': 'error',
                         'error': str(e)
                     })
         
