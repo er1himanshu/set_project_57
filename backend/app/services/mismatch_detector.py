@@ -40,13 +40,14 @@ def get_clip_model():
     return _model_cache['model'], _model_cache['processor']
 
 
-def detect_mismatch(image_path: str, description: str) -> Tuple[bool, float, str]:
+def detect_mismatch(image_path: str, description: str, threshold: Optional[float] = None) -> Tuple[bool, float, str]:
     """
     Detect if there's a mismatch between an image and its description using CLIP.
     
     Args:
         image_path: Path to the image file
         description: Text description of the product
+        threshold: Optional custom threshold for mismatch detection
         
     Returns:
         Tuple[bool, float, str]: 
@@ -57,6 +58,10 @@ def detect_mismatch(image_path: str, description: str) -> Tuple[bool, float, str
     # Handle empty or missing description
     if not description or description.strip() == "":
         return False, 1.0, "No description provided"
+    
+    # Use default threshold if not provided
+    if threshold is None:
+        threshold = MISMATCH_THRESHOLD
     
     try:
         # Load model and processor
@@ -77,12 +82,14 @@ def detect_mismatch(image_path: str, description: str) -> Tuple[bool, float, str
         with torch.no_grad():
             outputs = model(**inputs)
             
-        # Calculate similarity score (cosine similarity)
+        # Calculate similarity score
+        # CLIP returns logits - normalize to 0-1 range for interpretability
         logits_per_image = outputs.logits_per_image
-        similarity_score = torch.sigmoid(logits_per_image).item()
+        # Normalize the single logit value to 0-1 range using sigmoid
+        similarity_score = torch.sigmoid(logits_per_image / 100.0).item()
         
-        # Determine if there's a mismatch
-        is_mismatch = similarity_score < MISMATCH_THRESHOLD
+        # Determine if there's a mismatch using the provided threshold
+        is_mismatch = similarity_score < threshold
         
         # Generate message
         if is_mismatch:
@@ -117,7 +124,7 @@ def check_image_text_similarity(image_path: str, description: str, threshold: Op
     if threshold is None:
         threshold = MISMATCH_THRESHOLD
     
-    is_mismatch, similarity_score, message = detect_mismatch(image_path, description)
+    is_mismatch, similarity_score, message = detect_mismatch(image_path, description, threshold)
     
     return {
         "has_mismatch": is_mismatch,
