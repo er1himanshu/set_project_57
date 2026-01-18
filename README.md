@@ -15,6 +15,7 @@ A full-stack application for analyzing product images with comprehensive AI-powe
 - **Background Assessment**: Scores background cleanliness for white/neutral backgrounds
 - **Watermark Detection**: Identifies text overlays and watermarks
 - **Description Consistency**: Validates alignment between product description and image content (color matching, basic heuristics)
+- **🆕 Image-Text Mismatch Detection**: Uses pretrained CLIP (Contrastive Language-Image Pre-training) model to detect mismatches between product images and descriptions with AI-powered similarity scoring
 
 ### User Experience
 - **Modern UI**: Beautiful gradient-based design with card layouts
@@ -54,12 +55,14 @@ source venv/bin/activate
 # On Windows:
 venv\Scripts\activate
 
-# Install dependencies
+# Install dependencies (this may take several minutes for CLIP model dependencies)
 pip install -r requirements.txt
 
 # Start the backend server
 uvicorn app.main:app --reload
 ```
+
+**Note**: The first time you upload an image with a description, the CLIP model (~350MB) will be automatically downloaded. This is a one-time download.
 
 The backend API will run at **http://localhost:8000**
 - Interactive API documentation: **http://localhost:8000/docs**
@@ -107,14 +110,41 @@ Content-Type: multipart/form-data
 
 Parameters:
   - file: image file (required)
-  - description: product description text (optional)
+  - description: product description text (optional, enables mismatch detection)
 
 Response:
 {
   "message": "Uploaded & analyzed",
-  "result_id": 1
+  "result_id": 1,
+  "passed": true
 }
 ```
+
+**Note**: When a description is provided, the system automatically runs CLIP-based mismatch detection alongside quality checks.
+
+### Check Image-Text Mismatch
+```http
+POST /check-mismatch
+Content-Type: multipart/form-data
+
+Parameters:
+  - file: image file (required)
+  - description: product description text (required, min 10 characters)
+  - threshold: similarity threshold 0-1 (optional, default: 0.25)
+
+Response:
+{
+  "filename": "product_abc123.jpg",
+  "description": "Red leather handbag",
+  "has_mismatch": false,
+  "similarity_score": 0.85,
+  "threshold": 0.25,
+  "message": "Match confirmed (score: 0.85)",
+  "recommendation": "Image and description match well."
+}
+```
+
+**Use this endpoint** when you specifically want to test mismatch detection without storing results in the database.
 
 ### Get All Results
 ```http
@@ -151,6 +181,7 @@ Images are evaluated against the following ecommerce standards:
 | **Background** | ≥ 70% | Clean/white background score |
 | **Watermarks** | None | No text overlays or watermarks |
 | **Description** | Consistent | Color and content matching |
+| **🆕 Image-Text Match** | ≥ 0.25 | CLIP similarity score (0-1) |
 
 ### Response Schema
 
@@ -171,7 +202,10 @@ Images are evaluated against the following ecommerce standards:
   "background_score": 0.85,
   "has_watermark": false,
   "description_consistency": "Consistent",
-  "improvement_suggestions": "Image meets quality standards"
+  "improvement_suggestions": "Image meets quality standards",
+  "has_mismatch": false,
+  "similarity_score": 0.85,
+  "mismatch_message": "Match confirmed (score: 0.85)"
 }
 ```
 
@@ -189,9 +223,11 @@ set_project_57/
 │   │   ├── routes/
 │   │   │   ├── upload.py        # Image upload endpoint
 │   │   │   ├── analyze.py       # Analysis endpoint
+│   │   │   ├── mismatch.py      # 🆕 Mismatch detection endpoint
 │   │   │   └── results.py       # Results retrieval endpoints
 │   │   └── services/
 │   │       ├── image_quality.py # Image analysis logic
+│   │       ├── mismatch_detector.py # 🆕 CLIP-based mismatch detection
 │   │       └── storage.py       # File storage management
 │   ├── requirements.txt         # Python dependencies
 │   └── uploads/                 # Uploaded images (auto-created)
@@ -228,6 +264,10 @@ MIN_SHARPNESS = 50.0          # Sharpness threshold
 MIN_BRIGHTNESS = 60           # Minimum brightness
 MAX_BRIGHTNESS = 200          # Maximum brightness
 MIN_BACKGROUND_SCORE = 0.7    # Background quality threshold
+
+# 🆕 Image-Text Mismatch Detection
+MISMATCH_THRESHOLD = 0.25     # Similarity threshold (0-1, lower = stricter)
+CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"  # CLIP model to use
 ```
 
 ### Frontend Configuration
@@ -245,10 +285,21 @@ const API = axios.create({
 ### Using cURL
 
 ```bash
-# Upload with description
+# Upload with description (includes automatic mismatch detection)
 curl -X POST http://localhost:8000/upload \
   -F "file=@/path/to/product.jpg" \
   -F "description=Red leather handbag with gold hardware"
+
+# 🆕 Check mismatch detection specifically
+curl -X POST http://localhost:8000/check-mismatch \
+  -F "file=@/path/to/product.jpg" \
+  -F "description=Red leather handbag with gold hardware"
+
+# 🆕 Check mismatch with custom threshold
+curl -X POST http://localhost:8000/check-mismatch \
+  -F "file=@/path/to/product.jpg" \
+  -F "description=Red leather handbag" \
+  -F "threshold=0.30"
 
 # Get all results
 curl http://localhost:8000/results
@@ -262,12 +313,22 @@ curl http://localhost:8000/results/1
 ```python
 import requests
 
-# Upload image with description
+# Upload image with description (includes automatic mismatch detection)
 url = "http://localhost:8000/upload"
 files = {"file": open("product.jpg", "rb")}
 data = {"description": "Blue cotton t-shirt"}
 response = requests.post(url, files=files, data=data)
 print(response.json())
+
+# 🆕 Check mismatch detection specifically
+url = "http://localhost:8000/check-mismatch"
+files = {"file": open("product.jpg", "rb")}
+data = {"description": "Blue cotton t-shirt"}
+response = requests.post(url, files=files, data=data)
+result = response.json()
+print(f"Has Mismatch: {result['has_mismatch']}")
+print(f"Similarity Score: {result['similarity_score']}")
+print(f"Message: {result['message']}")
 
 # Get results
 results = requests.get("http://localhost:8000/results")
@@ -282,6 +343,9 @@ print(results.json())
 - **OpenCV**: Computer vision and image processing
 - **NumPy**: Numerical computing
 - **scikit-image**: Image processing algorithms
+- **🆕 Transformers**: Hugging Face library for pretrained models
+- **🆕 PyTorch**: Deep learning framework for CLIP model
+- **🆕 Pillow**: Python Imaging Library for image handling
 
 ### Frontend
 - **React 18**: UI library
@@ -315,6 +379,24 @@ sudo apt-get install python3-opencv libgl1
 # Or reinstall opencv-python
 pip uninstall opencv-python
 pip install opencv-python
+```
+
+**🆕 CLIP model download issues:**
+```bash
+# The CLIP model (~350MB) downloads automatically on first use
+# If download fails, check your internet connection and try again
+
+# To pre-download the model:
+python -c "from transformers import CLIPModel, CLIPProcessor; CLIPModel.from_pretrained('openai/clip-vit-base-patch32'); CLIPProcessor.from_pretrained('openai/clip-vit-base-patch32')"
+```
+
+**🆕 PyTorch installation issues:**
+```bash
+# If torch installation fails, visit https://pytorch.org/get-started/locally/
+# for platform-specific installation instructions
+
+# For CPU-only installation:
+pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```
 
 ### Frontend Issues
