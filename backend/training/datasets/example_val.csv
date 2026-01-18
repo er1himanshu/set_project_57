@@ -1,0 +1,4 @@
+image_path,text,label
+datasets/images/white_dress.jpg,White summer dress with floral pattern,match
+datasets/images/brown_bag.jpg,Brown leather handbag,match
+datasets/images/white_dress.jpg,Black leather jacket,mismatch

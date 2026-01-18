@@ -5,8 +5,10 @@ from skimage import exposure
 from ..config import (
     MIN_WIDTH, MIN_HEIGHT, BLUR_THRESHOLD, MIN_BRIGHTNESS, MAX_BRIGHTNESS,
     MIN_SHARPNESS, IDEAL_ASPECT_RATIOS, ASPECT_RATIO_TOLERANCE, MIN_BACKGROUND_SCORE,
-    TEXT_DETECTION_LINE_RATIO, COLOR_SIMILARITY_THRESHOLD, MAX_PIXELS_FOR_COLOR_SAMPLING
+    TEXT_DETECTION_LINE_RATIO, COLOR_SIMILARITY_THRESHOLD, MAX_PIXELS_FOR_COLOR_SAMPLING,
+    CLIP_SIMILARITY_THRESHOLD
 )
+from .clip_service import analyze_image_text_match
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +53,25 @@ def analyze_image(path: str, description: str = None):
     background_score = assess_background(image)
     has_watermark = detect_text_watermark(gray)
     
-    # Description consistency
+    # Description consistency (legacy heuristic method)
     description_consistency = check_description_consistency(description, image, path)
+    
+    # CLIP-based image-text similarity analysis
+    clip_similarity_score = 0.0
+    clip_match_status = "No description provided"
+    clip_is_match = True
+    
+    if description and description.strip():
+        try:
+            clip_results = analyze_image_text_match(path, description)
+            clip_similarity_score = clip_results.get("similarity_score", 0.0)
+            clip_match_status = clip_results.get("status", "Unknown")
+            clip_is_match = clip_results.get("is_match", True)
+        except Exception as e:
+            logger.warning(f"CLIP analysis failed, continuing with legacy method: {str(e)}")
+            clip_similarity_score = 0.0
+            clip_match_status = f"CLIP unavailable: {str(e)}"
+            clip_is_match = True
     
     # Quality checks
     reasons = []
@@ -106,6 +125,12 @@ def analyze_image(path: str, description: str = None):
     if description and description_consistency != "Consistent":
         reasons.append(f"Description mismatch: {description_consistency}")
         suggestions.append("Ensure product description accurately matches the image content")
+    
+    # CLIP-based mismatch detection
+    if description and not clip_is_match:
+        passed = False
+        reasons.append(f"CLIP detected image-text mismatch")
+        suggestions.append(f"The image content may not match the description. CLIP score: {clip_similarity_score:.3f}, threshold: {CLIP_SIMILARITY_THRESHOLD}")
 
     reason = "OK" if passed else ", ".join(reasons)
     improvement_suggestions = "; ".join(suggestions) if suggestions else "Image meets quality standards"
@@ -123,7 +148,10 @@ def analyze_image(path: str, description: str = None):
         "background_score": background_score,
         "has_watermark": has_watermark,
         "description_consistency": description_consistency,
-        "improvement_suggestions": improvement_suggestions
+        "improvement_suggestions": improvement_suggestions,
+        "clip_similarity_score": clip_similarity_score,
+        "clip_match_status": clip_match_status,
+        "clip_is_match": clip_is_match
     }
 
 

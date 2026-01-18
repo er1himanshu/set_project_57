@@ -1,0 +1,7 @@
+image_path,text,label
+datasets/images/red_shirt.jpg,Red cotton t-shirt with round neck,match
+datasets/images/blue_jeans.jpg,Blue denim jeans with slim fit,match
+datasets/images/black_shoes.jpg,Black leather formal shoes,match
+datasets/images/red_shirt.jpg,Blue denim jeans with slim fit,mismatch
+datasets/images/blue_jeans.jpg,Green cotton dress,mismatch
+datasets/images/black_shoes.jpg,White running sneakers,mismatch

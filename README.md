@@ -15,6 +15,13 @@ A full-stack application for analyzing product images with comprehensive AI-powe
 - **Background Assessment**: Scores background cleanliness for white/neutral backgrounds
 - **Watermark Detection**: Identifies text overlays and watermarks
 - **Description Consistency**: Validates alignment between product description and image content (color matching, basic heuristics)
+- **🆕 CLIP-Based Mismatch Detection**: Advanced AI-powered image-text similarity analysis using CLIP (Contrastive Language-Image Pre-training) for detecting inconsistencies between images and descriptions
+
+### AI/ML Capabilities
+- **CLIP Integration**: State-of-the-art vision-language model for semantic image-text matching
+- **Zero-Shot Classification**: Categorize products without training using predefined labels
+- **Fine-Tuning Support**: Train CLIP on your product data for improved domain-specific accuracy
+- **Configurable Thresholds**: Adjust sensitivity for match/mismatch detection
 
 ### User Experience
 - **Modern UI**: Beautiful gradient-based design with card layouts
@@ -150,7 +157,8 @@ Images are evaluated against the following ecommerce standards:
 | **Aspect Ratio** | Standard ratios | 1:1, 4:3, 3:4, 16:9, 9:16 (±10% tolerance) |
 | **Background** | ≥ 70% | Clean/white background score |
 | **Watermarks** | None | No text overlays or watermarks |
-| **Description** | Consistent | Color and content matching |
+| **Description** | Consistent | Color and content matching (legacy heuristic) |
+| **🆕 CLIP Similarity** | ≥ 0.25 | AI-based image-text semantic matching score |
 
 ### Response Schema
 
@@ -171,6 +179,9 @@ Images are evaluated against the following ecommerce standards:
   "background_score": 0.85,
   "has_watermark": false,
   "description_consistency": "Consistent",
+  "clip_similarity_score": 0.842,
+  "clip_match_status": "Match (score: 0.842)",
+  "clip_is_match": true,
   "improvement_suggestions": "Image meets quality standards"
 }
 ```
@@ -228,7 +239,19 @@ MIN_SHARPNESS = 50.0          # Sharpness threshold
 MIN_BRIGHTNESS = 60           # Minimum brightness
 MAX_BRIGHTNESS = 200          # Maximum brightness
 MIN_BACKGROUND_SCORE = 0.7    # Background quality threshold
+
+# CLIP configuration
+CLIP_MODEL_NAME = "openai/clip-vit-base-patch32"  # CLIP model
+CLIP_SIMILARITY_THRESHOLD = 0.25  # Image-text match threshold (0-1)
+CLIP_DEVICE = "cpu"           # Use "cuda" for GPU acceleration
 ```
+
+**CLIP Threshold Guidance:**
+- **0.20**: Lenient, fewer false positives
+- **0.25**: Balanced (default, recommended)
+- **0.30**: Strict, catches subtle mismatches
+
+For detailed CLIP configuration and usage, see [CLIP Integration Guide](docs/CLIP_INTEGRATION.md).
 
 ### Frontend Configuration
 
@@ -274,6 +297,77 @@ results = requests.get("http://localhost:8000/results")
 print(results.json())
 ```
 
+## 🤖 CLIP Commands & Training
+
+### CLI Tool for CLIP Operations
+
+The project includes a CLI tool for CLIP-related tasks:
+
+```bash
+cd backend
+
+# Show CLIP configuration
+python clip_cli.py info
+
+# Test image-text similarity
+python clip_cli.py test \
+  --image path/to/product.jpg \
+  --text "Red cotton t-shirt"
+
+# Batch test from CSV
+python clip_cli.py batch-test \
+  --csv test_data.csv \
+  --output results.csv
+```
+
+### Fine-Tuning CLIP on Your Data
+
+Train CLIP on your product images to improve accuracy:
+
+```bash
+cd backend
+
+# Basic training
+python clip_cli.py train \
+  --train-csv training/datasets/train.csv \
+  --val-csv training/datasets/val.csv
+
+# Advanced training with custom parameters
+python clip_cli.py train \
+  --train-csv training/datasets/train.csv \
+  --val-csv training/datasets/val.csv \
+  --epochs 5 \
+  --batch-size 16 \
+  --lr 1e-5 \
+  --output ./my_fine_tuned_model
+```
+
+### Dataset Format for Training
+
+Create a CSV with your image-text pairs:
+
+```csv
+image_path,text,label
+images/product1.jpg,Red cotton shirt,match
+images/product2.jpg,Blue denim jeans,match
+images/product1.jpg,Green leather shoes,mismatch
+```
+
+- **match**: Image and text correctly correspond
+- **mismatch**: Image and text do not match
+
+See [`backend/training/datasets/README.md`](backend/training/datasets/README.md) for complete format specification.
+
+### Using Fine-Tuned Models
+
+After training, update `backend/app/config.py`:
+
+```python
+CLIP_MODEL_NAME = "./fine_tuned_clip/best_model"
+```
+
+For comprehensive CLIP documentation, see [**CLIP Integration Guide**](docs/CLIP_INTEGRATION.md).
+
 ## 🛠️ Technology Stack
 
 ### Backend
@@ -282,6 +376,9 @@ print(results.json())
 - **OpenCV**: Computer vision and image processing
 - **NumPy**: Numerical computing
 - **scikit-image**: Image processing algorithms
+- **🆕 PyTorch**: Deep learning framework
+- **🆕 Transformers**: Hugging Face transformers library (CLIP models)
+- **🆕 Pillow**: Advanced image processing
 
 ### Frontend
 - **React 18**: UI library

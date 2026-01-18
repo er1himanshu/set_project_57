@@ -19,3 +19,16 @@ htmlcov/
 .DS_Store
 .vscode/
 .idea/
+
+# CLIP model cache and fine-tuned models
+backend/fine_tuned_clip/
+backend/.cache/
+backend/training/models/
+*.pt
+*.pth
+*.bin
+
+# Hugging Face cache
+.cache/
+transformers_cache/
+huggingface/
