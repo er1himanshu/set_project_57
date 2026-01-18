@@ -79,6 +79,7 @@ async def upload_image(
     Raises:
         HTTPException: If upload or analysis fails
     """
+    file_path = None
     try:
         # Validate file
         validate_file(file)
@@ -87,25 +88,25 @@ async def upload_image(
         if description:
             description = description.strip()[:500]  # Limit description length
         
-        # Save file
-        file_path = save_upload(file)
-        logger.info(f"File uploaded: {file.filename}")
+        # Save file and get both path and unique filename
+        file_path, unique_filename = save_upload(file)
+        logger.info(f"File uploaded: {unique_filename}")
         
         # Analyze image
         analysis = analyze_image(file_path, description)
 
         if analysis is None:
             # Clean up the uploaded file if analysis fails
-            if os.path.exists(file_path):
+            if file_path and os.path.exists(file_path):
                 os.remove(file_path)
             raise HTTPException(
                 status_code=400,
                 detail="Invalid or corrupted image file. Please upload a valid image."
             )
 
-        # Store result in database
+        # Store result in database with unique filename (not original)
         result = ImageResult(
-            filename=file.filename,
+            filename=unique_filename,  # Use unique filename for security
             width=analysis["width"],
             height=analysis["height"],
             blur_score=analysis["blur_score"],
@@ -125,7 +126,7 @@ async def upload_image(
         db.commit()
         db.refresh(result)
         
-        logger.info(f"Analysis complete for {file.filename}, result_id: {result.id}")
+        logger.info(f"Analysis complete for {unique_filename}, result_id: {result.id}")
 
         return {
             "message": "Image uploaded and analyzed successfully",
@@ -137,6 +138,13 @@ async def upload_image(
         # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
+        # Clean up file on any error
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as cleanup_error:
+                logger.error(f"Error cleaning up file {file_path}: {str(cleanup_error)}")
+        
         # Log the error internally but return generic message to user
         logger.error(f"Upload error: {str(e)}", exc_info=True)
         raise HTTPException(
