@@ -106,6 +106,8 @@ def generate_attention_heatmap(
             outputs = model(**inputs, output_attentions=True)
         
         # Calculate similarity score
+        # Note: Uses sigmoid normalization consistent with existing mismatch_detector.py
+        # This provides a 0-1 score that's calibrated with the threshold system
         logits_per_image = outputs.logits_per_image
         similarity_score = torch.sigmoid(logits_per_image / 100.0).item()
         
@@ -130,8 +132,15 @@ def generate_attention_heatmap(
         attention_weights = get_attention_rollout(attention_stack, discard_ratio)
         
         # Reshape attention weights to 2D grid
-        # CLIP ViT-B/32 uses 7x7 patches (224/32 = 7)
-        grid_size = int(np.sqrt(len(attention_weights)))
+        # CLIP ViT models use square patch grids (e.g., 7x7 for ViT-B/32, 16x16 for ViT-L/14)
+        num_patches = len(attention_weights)
+        grid_size = int(np.sqrt(num_patches))
+        
+        # Validate that patches form a square grid
+        if grid_size * grid_size != num_patches:
+            logger.error(f"Non-square patch grid detected: {num_patches} patches")
+            return None, similarity_score, f"Unsupported model configuration (score: {similarity_score:.2f})"
+        
         attention_map = attention_weights.reshape(grid_size, grid_size)
         
         # Normalize to 0-1 range

@@ -100,6 +100,7 @@ async def explain_clip_similarity(
                 detail="Description must be at least 10 characters long"
             )
         if len(description) > 500:
+            logger.warning(f"Description truncated from {len(description)} to 500 characters")
             description = description[:500]  # Truncate to limit
         
         # Save file temporarily
