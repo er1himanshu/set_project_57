@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { uploadImage, fetchResultDetail } from "../api/client";
+import { uploadImage, fetchResultDetail, explainImage } from "../api/client";
 import { useNavigate } from "react-router-dom";
 
 export default function UploadForm() {
@@ -10,6 +10,9 @@ export default function UploadForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resultId, setResultId] = useState(null);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [explanationData, setExplanationData] = useState(null);
+  const [loadingExplanation, setLoadingExplanation] = useState(false);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -55,8 +58,36 @@ export default function UploadForm() {
     setMessage("");
     setError("");
     setResultId(null);
+    setShowExplanation(false);
+    setExplanationData(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  const handleShowExplanation = async () => {
+    // If already showing, just toggle off
+    if (showExplanation) {
+      setShowExplanation(false);
+      return;
+    }
+
+    if (!file || !description || description.trim().length < 10) {
+      setError("Please provide both an image and a description (at least 10 characters) to generate an explanation.");
+      return;
+    }
+
+    setLoadingExplanation(true);
+    setError("");
+
+    try {
+      const res = await explainImage(file, description);
+      setExplanationData(res.data);
+      setShowExplanation(true);
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to generate explanation. Please try again.");
+    } finally {
+      setLoadingExplanation(false);
     }
   };
 
@@ -102,11 +133,21 @@ export default function UploadForm() {
                 </div>
               ) : (
                 <div className="relative">
-                  <img src={preview} alt="Preview" className="max-h-64 mx-auto rounded-lg shadow-lg" />
+                  {showExplanation && explanationData?.heatmap_base64 ? (
+                    <img 
+                      src={`data:image/png;base64,${explanationData.heatmap_base64}`} 
+                      alt="Explanation Heatmap" 
+                      className="max-h-64 mx-auto rounded-lg shadow-lg" 
+                    />
+                  ) : (
+                    <img src={preview} alt="Preview" className="max-h-64 mx-auto rounded-lg shadow-lg" />
+                  )}
                   <button
                     onClick={() => {
                       setFile(null);
                       setPreview(null);
+                      setShowExplanation(false);
+                      setExplanationData(null);
                       if (fileInputRef.current) fileInputRef.current.value = "";
                     }}
                     className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors"
@@ -163,6 +204,53 @@ export default function UploadForm() {
                     </svg>
                     Analyzing...
                   </span>
+                ) : (
+                  "Analyze Image Quality"
+                )}
+              </button>
+              
+              <button
+                onClick={handleShowExplanation}
+                disabled={loadingExplanation || !file || !description || description.trim().length < 10}
+                className="btn-secondary w-full py-4 text-lg"
+              >
+                {loadingExplanation ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating...
+                  </span>
+                ) : showExplanation ? (
+                  "Hide Explanation"
+                ) : (
+                  "Show Explanation"
+                )}
+              </button>
+              
+              {showExplanation && explanationData && (
+                <div className="p-4 bg-indigo-50 border-2 border-indigo-200 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-indigo-900">Similarity Score</p>
+                      <p className="text-2xl font-bold text-indigo-600">{(explanationData.similarity_score * 100).toFixed(1)}%</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowExplanation(false);
+                        setExplanationData(null);
+                      }}
+                      className="text-indigo-600 hover:text-indigo-800 font-medium text-sm underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <p className="text-xs text-indigo-700 mt-2">
+                    Heatmap shows which regions contribute most to the similarity score
+                  </p>
+                </div>
+              )}
                 ) : (
                   "Analyze Image Quality"
                 )}

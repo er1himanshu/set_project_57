@@ -18,6 +18,18 @@ export const uploadImage = async (file, description = "") => {
   }
 };
 
+export const explainImage = async (file, description) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("description", description);
+    return await API.post("/explain", formData);
+  } catch (error) {
+    console.error("Explain error:", error);
+    throw error;
+  }
+};
+
 export const fetchResults = async () => {
   try {
     return await API.get("/results");
