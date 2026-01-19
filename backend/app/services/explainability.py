@@ -159,8 +159,13 @@ def generate_clip_explanation(
         )
         
         # Get model outputs with attention weights
+        # Note: output_attentions is supported by CLIP ViT models
         with torch.no_grad():
-            outputs = model(**inputs, output_attentions=True)
+            try:
+                outputs = model(**inputs, output_attentions=True)
+            except TypeError:
+                # Model may not support output_attentions parameter
+                raise Exception("CLIP model does not support attention output. Please use a compatible CLIP ViT model.")
         
         # Calculate similarity score
         logits_per_image = outputs.logits_per_image
@@ -179,8 +184,12 @@ def generate_clip_explanation(
         attention_map = compute_attention_rollout(attention_stack)
         
         # Determine grid size from model architecture
-        # CLIP ViT-B/32 uses 224x224 images with 32x32 patches = 7x7 grid
-        grid_size = 7  # For base patch32 model
+        # For CLIP ViT models, patches are arranged in a square grid
+        # Total patches = (image_size / patch_size) ^ 2
+        # For ViT-B/32: 224/32 = 7, so 7x7 grid
+        import math
+        num_patches = attention_map.shape[0]
+        grid_size = int(math.sqrt(num_patches))
         
         # Create heatmap overlay
         heatmap_image = create_heatmap_overlay(

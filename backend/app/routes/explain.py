@@ -194,9 +194,11 @@ async def explain_clip_similarity(
             detail=f"An error occurred during explanation generation: {str(e)}"
         )
     finally:
-        # Always clean up the temporary file
+        # Clean up temporary file if it still exists (for successful requests)
+        # Exception handlers already clean up on errors
         if file_path and os.path.exists(file_path):
             try:
                 os.remove(file_path)
+                logger.debug(f"Cleaned up temporary file: {file_path}")
             except Exception as cleanup_error:
                 logger.error(f"Error cleaning up file {file_path}: {str(cleanup_error)}")
