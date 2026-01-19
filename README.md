@@ -16,11 +16,13 @@ A full-stack application for analyzing product images with comprehensive AI-powe
 - **Watermark Detection**: Identifies text overlays and watermarks
 - **Description Consistency**: Validates alignment between product description and image content (color matching, basic heuristics)
 - **🆕 Image-Text Mismatch Detection**: Uses pretrained CLIP (Contrastive Language-Image Pre-training) model to detect mismatches between product images and descriptions with AI-powered similarity scoring
+- **🆕 CLIP Explainability**: Generates attention-based heatmap overlays showing which regions of the image contribute most to the similarity score, helping you understand what the AI model focuses on
 
 ### User Experience
 - **Modern UI**: Beautiful gradient-based design with card layouts
 - **Image Preview**: See your image before upload
 - **Real-time Results**: Instant analysis with detailed quality checklist
+- **🆕 Visual Explanations**: Interactive "Show Explanation" button to display attention heatmaps over images
 - **Improvement Suggestions**: Actionable tips to enhance image quality
 - **Results Dashboard**: Track all analyses with statistics and filters
 
@@ -95,6 +97,17 @@ The frontend will run at **http://localhost:5173**
 4. Click "Analyze Image Quality"
 5. View detailed results with pass/fail status, quality metrics, and improvement suggestions
 
+### 🆕 Using CLIP Explainability (Show Explanation)
+
+1. Upload an image and enter a product description (at least 10 characters)
+2. Click the **"Show Explanation"** button
+3. The system generates an attention-based heatmap showing which regions of the image the AI focuses on when matching it to your description
+4. The heatmap overlay is displayed on the image, with warmer colors (red/yellow) indicating areas of high attention
+5. View the similarity score to understand how well the image matches the description
+6. Click **"Hide Explanation"** to return to the original image view
+
+**Note**: The explainability feature requires the CLIP model to be available. In offline or sandboxed environments where the model cannot be downloaded, this feature will be unavailable but won't affect other functionality.
+
 ### Viewing Results
 
 - Click "Results" in the navigation bar to see all analyzed images
@@ -145,6 +158,32 @@ Response:
 ```
 
 **Use this endpoint** when you specifically want to test mismatch detection without storing results in the database.
+
+### 🆕 Explain Image-Text Similarity (CLIP Explainability)
+```http
+POST /explain
+Content-Type: multipart/form-data
+
+Parameters:
+  - file: image file (required, max 10MB, jpg/png/gif/webp)
+  - description: product description text (required, min 10 characters)
+
+Response:
+{
+  "filename": "product_abc123.jpg",
+  "description": "Red leather handbag",
+  "heatmap_base64": "iVBORw0KGgoAAAANSUhEUgAA...",
+  "similarity_score": 0.85,
+  "message": "Explanation generated (similarity: 0.85)"
+}
+```
+
+**Use this endpoint** to generate visual explanations of CLIP's image-text similarity using attention rollout. The heatmap overlay shows which regions of the image contribute most to the similarity score, helping you understand what the AI model is focusing on when matching images to descriptions.
+
+The `heatmap_base64` field contains a base64-encoded PNG image with the attention heatmap overlaid on the original image. You can display it directly in HTML using:
+```html
+<img src="data:image/png;base64,{heatmap_base64}" />
+```
 
 ### Get All Results
 ```http
@@ -303,6 +342,12 @@ curl -X POST http://localhost:8000/check-mismatch \
   -F "description=Red leather handbag" \
   -F "threshold=0.30"
 
+# 🆕 Get CLIP explainability heatmap
+curl -X POST http://localhost:8000/explain \
+  -F "file=@/path/to/product.jpg" \
+  -F "description=Red leather handbag with gold hardware" \
+  -o explanation_result.json
+
 # Get all results
 curl http://localhost:8000/results
 
@@ -331,6 +376,20 @@ result = response.json()
 print(f"Has Mismatch: {result['has_mismatch']}")
 print(f"Similarity Score: {result['similarity_score']}")
 print(f"Message: {result['message']}")
+
+# 🆕 Get CLIP explainability heatmap
+url = "http://localhost:8000/explain"
+files = {"file": open("product.jpg", "rb")}
+data = {"description": "Blue cotton t-shirt"}
+response = requests.post(url, files=files, data=data)
+result = response.json()
+print(f"Similarity Score: {result['similarity_score']}")
+print(f"Message: {result['message']}")
+# Save the heatmap image
+import base64
+with open("heatmap.png", "wb") as f:
+    f.write(base64.b64decode(result['heatmap_base64']))
+print("Heatmap saved to heatmap.png")
 
 # Get results
 results = requests.get("http://localhost:8000/results")
