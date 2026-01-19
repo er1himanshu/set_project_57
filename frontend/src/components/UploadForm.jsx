@@ -251,10 +251,6 @@ export default function UploadForm() {
                   </p>
                 </div>
               )}
-                ) : (
-                  "Analyze Image Quality"
-                )}
-              </button>
               
               {resultId && (
                 <button
