@@ -16,6 +16,7 @@ A full-stack application for analyzing product images with comprehensive AI-powe
 - **Watermark Detection**: Identifies text overlays and watermarks
 - **Description Consistency**: Validates alignment between product description and image content (color matching, basic heuristics)
 - **🆕 Image-Text Mismatch Detection**: Uses pretrained CLIP (Contrastive Language-Image Pre-training) model to detect mismatches between product images and descriptions with AI-powered similarity scoring
+- **🆕 CLIP Explainability**: Visual attention rollout heatmaps showing which image regions most influenced the CLIP similarity score, helping understand AI decision-making
 
 ### User Experience
 - **Modern UI**: Beautiful gradient-based design with card layouts
@@ -23,6 +24,7 @@ A full-stack application for analyzing product images with comprehensive AI-powe
 - **Real-time Results**: Instant analysis with detailed quality checklist
 - **Improvement Suggestions**: Actionable tips to enhance image quality
 - **Results Dashboard**: Track all analyses with statistics and filters
+- **🆕 AI Explainability Visualization**: Interactive heatmap overlays showing attention patterns from CLIP model
 
 ## 🚀 Prerequisites
 
@@ -146,6 +148,33 @@ Response:
 
 **Use this endpoint** when you specifically want to test mismatch detection without storing results in the database.
 
+### 🆕 Explain CLIP Similarity (Explainability)
+```http
+POST /explain
+Content-Type: multipart/form-data
+
+Parameters:
+  - file: image file (required)
+  - description: product description text (required, min 10 characters)
+  - threshold: similarity threshold 0-1 (optional, default: 0.25)
+
+Response:
+{
+  "filename": "product_abc123.jpg",
+  "description": "Red leather handbag with gold hardware",
+  "similarity_score": 0.85,
+  "has_mismatch": false,
+  "threshold": 0.25,
+  "message": "Match confirmed (score: 0.85)",
+  "heatmap_base64": "<base64-encoded PNG image>",
+  "explanation": "Heatmap shows which image regions most influenced the similarity score..."
+}
+```
+
+**This endpoint** generates a visual explanation using CLIP attention rollout, showing which parts of the image most influenced the similarity score between the image and description. The heatmap overlay uses warmer colors (red/yellow) to indicate regions of higher attention, and cooler colors (blue) for lower attention. The returned `heatmap_base64` is a base64-encoded PNG image that can be displayed directly in the browser.
+
+**Requirements**: This feature requires the CLIP model to be available locally. If the model is not accessible, the endpoint returns a 503 error.
+
 ### Get All Results
 ```http
 GET /results
@@ -224,10 +253,12 @@ set_project_57/
 │   │   │   ├── upload.py        # Image upload endpoint
 │   │   │   ├── analyze.py       # Analysis endpoint
 │   │   │   ├── mismatch.py      # 🆕 Mismatch detection endpoint
+│   │   │   ├── explain.py       # 🆕 CLIP explainability endpoint
 │   │   │   └── results.py       # Results retrieval endpoints
 │   │   └── services/
 │   │       ├── image_quality.py # Image analysis logic
 │   │       ├── mismatch_detector.py # 🆕 CLIP-based mismatch detection
+│   │       ├── explainability.py # 🆕 CLIP attention rollout & visualization
 │   │       └── storage.py       # File storage management
 │   ├── requirements.txt         # Python dependencies
 │   └── uploads/                 # Uploaded images (auto-created)
@@ -303,6 +334,11 @@ curl -X POST http://localhost:8000/check-mismatch \
   -F "description=Red leather handbag" \
   -F "threshold=0.30"
 
+# 🆕 Generate CLIP explanation with attention heatmap
+curl -X POST http://localhost:8000/explain \
+  -F "file=@/path/to/product.jpg" \
+  -F "description=Red leather handbag with gold hardware"
+
 # Get all results
 curl http://localhost:8000/results
 
@@ -331,6 +367,18 @@ result = response.json()
 print(f"Has Mismatch: {result['has_mismatch']}")
 print(f"Similarity Score: {result['similarity_score']}")
 print(f"Message: {result['message']}")
+
+# 🆕 Generate CLIP explanation with attention heatmap
+url = "http://localhost:8000/explain"
+files = {"file": open("product.jpg", "rb")}
+data = {"description": "Blue cotton t-shirt"}
+response = requests.post(url, files=files, data=data)
+result = response.json()
+print(f"Similarity Score: {result['similarity_score']}")
+print(f"Has Mismatch: {result['has_mismatch']}")
+print(f"Message: {result['message']}")
+# Heatmap is available as base64: result['heatmap_base64']
+# To display: f"data:image/png;base64,{result['heatmap_base64']}"
 
 # Get results
 results = requests.get("http://localhost:8000/results")
