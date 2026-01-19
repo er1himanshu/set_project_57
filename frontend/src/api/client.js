@@ -35,3 +35,18 @@ export const fetchResultDetail = async (id) => {
     throw error;
   }
 };
+
+export const explainClipSimilarity = async (file, description, threshold = null) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("description", description);
+    if (threshold !== null) {
+      formData.append("threshold", threshold);
+    }
+    return await API.post("/explain", formData);
+  } catch (error) {
+    console.error("Explain CLIP similarity error:", error);
+    throw error;
+  }
+};
