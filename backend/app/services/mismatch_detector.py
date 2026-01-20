@@ -6,11 +6,12 @@ their descriptions using a pretrained multimodal CLIP model.
 """
 
 import logging
+import re
 from typing import Tuple, Optional
 import torch
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel
-from ..config import MISMATCH_THRESHOLD, CLIP_MODEL_NAME
+from ..config import MISMATCH_THRESHOLD, CLIP_MODEL_NAME, CATEGORY_CONFIDENCE_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ def detect_image_category(image_path: str, top_k: int = 3) -> Tuple[str, float]:
 
 def extract_category_from_description(description: str) -> Optional[str]:
     """
-    Extract the most likely product category from a description.
+    Extract the most likely product category from a description using word boundary matching.
     
     Args:
         description: Product description text
@@ -154,9 +155,11 @@ def extract_category_from_description(description: str) -> Optional[str]:
     
     description_lower = description.lower()
     
-    # Check for exact category matches in description
+    # Check for exact category matches using word boundaries
     for category in PRODUCT_CATEGORIES:
-        if category in description_lower:
+        # Use regex with word boundaries to avoid partial word matches
+        pattern = r'\b' + re.escape(category) + r'\b'
+        if re.search(pattern, description_lower):
             return category
     
     return None
@@ -225,7 +228,7 @@ def detect_mismatch(image_path: str, description: str, threshold: Optional[float
             # Check if there's a category conflict
             if description_category and image_category:
                 # Check if they are different categories and confidence is high
-                if description_category != image_category and category_confidence > 0.3:
+                if description_category != image_category and category_confidence > CATEGORY_CONFIDENCE_THRESHOLD:
                     category_message = f"Description mentions '{description_category}', but image looks like '{image_category}'"
                     logger.info(f"Category mismatch detected: {category_message}")
         except Exception as e:

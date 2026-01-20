@@ -192,7 +192,11 @@ def generate_clip_explanation(
             attention_stack = attention_stack.squeeze(1)  # Remove batch dimension
         except (RuntimeError, ValueError) as e:
             logger.error(f"Failed to stack attention tensors: {str(e)}")
-            raise Exception(f"Invalid attention tensor structure: {str(e)}")
+            # Provide more context about the error
+            error_details = f"Expected tensor list but got: {type(vision_attentions)}"
+            if vision_attentions:
+                error_details += f", first item type: {type(vision_attentions[0])}, length: {len(vision_attentions)}"
+            raise Exception(f"Invalid attention tensor structure - {error_details}. Error: {str(e)}")
         
         # Compute attention rollout
         attention_map = compute_attention_rollout(attention_stack)
