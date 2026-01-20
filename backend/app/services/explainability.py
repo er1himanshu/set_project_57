@@ -23,7 +23,7 @@ import cv2
 from transformers import CLIPProcessor, CLIPModel
 
 from .mismatch_detector import get_clip_model, MismatchDetectionUnavailableError
-from ..config import CLIP_MODEL_NAME
+from ..config import CLIP_MODEL_NAME, MISMATCH_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +169,7 @@ def generate_fallback_explanation(
     image_base64 = encode_image_to_base64(image, format="PNG")
     
     # Determine if mismatch
-    threshold = threshold if threshold else 0.25
+    threshold = threshold if threshold else MISMATCH_THRESHOLD
     is_mismatch = similarity_score < threshold
     
     # Generate message
@@ -309,7 +309,7 @@ def generate_clip_explanation(
         heatmap_base64 = encode_image_to_base64(heatmap_image, format="PNG")
         
         # Determine if mismatch
-        is_mismatch = similarity_score < (threshold if threshold else 0.25)
+        is_mismatch = similarity_score < (threshold if threshold else MISMATCH_THRESHOLD)
         
         # Generate message
         if is_mismatch:
