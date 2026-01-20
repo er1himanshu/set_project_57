@@ -193,6 +193,7 @@ def generate_clip_explanation(
             message = f"Match confirmed (score: {similarity_score:.2f})"
         
         # Try to extract and process attention weights for heatmap
+        # If attention is unavailable, we'll return a fallback response with just the similarity score
         try:
             # Extract vision attention weights
             vision_attentions = outputs.vision_model_output.attentions
@@ -241,6 +242,10 @@ def generate_clip_explanation(
             
         except (ValueError, AttributeError, RuntimeError) as attention_error:
             # Attention processing failed - return fallback without heatmap
+            # This handles cases where:
+            # 1. Model doesn't support attention outputs (vision_attentions is None)
+            # 2. Some attention tensors are missing (contains None values)
+            # 3. Attention processing encounters runtime errors
             logger.warning(f"Attention processing unavailable, returning fallback: {str(attention_error)}")
             
             return {
