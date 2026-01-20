@@ -161,12 +161,13 @@ def create_simple_heatmap(
     dist = np.sqrt((x - center_x)**2 + (y - center_y)**2)
     max_dist = np.sqrt(center_x**2 + center_y**2)
     
-    # Guard against division by zero for very small images
-    if max_dist == 0:
+    # Guard against division by zero for very small images (use epsilon)
+    if max_dist < 1e-8:
         max_dist = 1.0
     
     # Normalize to 0-255 (center bright, edges darker)
-    heatmap = 255 - (dist / max_dist * GRADIENT_RANGE).astype(np.uint8)
+    # Use np.clip to prevent overflow
+    heatmap = np.clip(255 - (dist / max_dist * GRADIENT_RANGE), 0, 255).astype(np.uint8)
     
     # Apply colormap
     heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
@@ -247,18 +248,30 @@ def generate_clip_explanation(
         fallback_reason = ""
         
         with torch.no_grad():
+            # First, try to check if the model supports output_attentions
+            # by inspecting its config
             try:
-                outputs = model(**inputs, output_attentions=True)
-            except TypeError as e:
-                # Check if error is related to output_attentions parameter
-                if "output_attentions" in str(e) or "unexpected keyword argument" in str(e):
-                    logger.warning("CLIP model does not support output_attentions parameter, using fallback")
+                model_config = model.config
+                supports_attention = hasattr(model_config, 'output_attentions')
+            except AttributeError:
+                supports_attention = True  # Assume support and let it fail gracefully
+            
+            # Try to get outputs with attention
+            if supports_attention:
+                try:
+                    outputs = model(**inputs, output_attentions=True)
+                except TypeError as e:
+                    # If TypeError occurs, model doesn't support output_attentions
+                    logger.warning(f"Model doesn't support output_attentions: {str(e)}, using fallback")
                     outputs = model(**inputs)
                     use_fallback = True
                     fallback_reason = "model does not support attention visualization"
-                else:
-                    # Re-raise if it's a different TypeError
-                    raise
+            else:
+                # Model config indicates no attention support
+                logger.warning("Model config indicates output_attentions not supported, using fallback")
+                outputs = model(**inputs)
+                use_fallback = True
+                fallback_reason = "model does not support attention visualization"
         
         # Calculate similarity score
         logits_per_image = outputs.logits_per_image
@@ -311,8 +324,9 @@ def generate_clip_explanation(
                 # Encode heatmap to base64
                 heatmap_base64 = encode_image_to_base64(heatmap_image, format="PNG")
                 explanation_text = "Heatmap shows which image regions most influenced the similarity score. Warmer colors (red/yellow) indicate higher attention."
-            except Exception as e:
+            except (RuntimeError, ValueError, AttributeError) as e:
                 # If attention processing fails, fall back to simple visualization
+                # These are the expected exceptions during attention processing
                 logger.warning(f"Error processing attention maps: {str(e)}, using fallback")
                 heatmap_base64, explanation_text = generate_fallback_explanation(
                     image_path=image_path,
