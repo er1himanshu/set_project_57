@@ -322,36 +322,55 @@ export default function UploadForm() {
               </div>
             </div>
 
-            {/* Heatmap Visualization */}
+            {/* Heatmap Visualization or Fallback */}
             <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-6 shadow-soft">
               <h4 className="text-xl font-bold text-gray-800 mb-3 flex items-center">
                 <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
-                Attention Heatmap
+                {explanation.attention_available ? 'Attention Heatmap' : 'Explainability Result'}
               </h4>
               <p className="text-gray-700 mb-4 text-sm">
                 {explanation.explanation}
               </p>
-              <div className="bg-white rounded-lg p-4 shadow-inner">
-                <img 
-                  src={`data:image/png;base64,${explanation.heatmap_base64}`} 
-                  alt="Attention Heatmap" 
-                  className="max-w-full h-auto rounded-lg shadow-lg mx-auto"
-                  style={{ maxHeight: '500px' }}
-                />
-              </div>
-              <div className="mt-4 flex items-center justify-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-12 h-4 rounded" style={{ background: 'linear-gradient(to right, #0000ff, #00ffff)' }}></div>
-                  <span className="text-gray-700 font-medium">Low Attention</span>
+              
+              {explanation.attention_available && explanation.heatmap_base64 ? (
+                <>
+                  <div className="bg-white rounded-lg p-4 shadow-inner">
+                    <img 
+                      src={`data:image/png;base64,${explanation.heatmap_base64}`} 
+                      alt="Attention Heatmap" 
+                      className="max-w-full h-auto rounded-lg shadow-lg mx-auto"
+                      style={{ maxHeight: '500px' }}
+                    />
+                  </div>
+                  <div className="mt-4 flex items-center justify-center gap-6 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-12 h-4 rounded" style={{ background: 'linear-gradient(to right, #0000ff, #00ffff)' }}></div>
+                      <span className="text-gray-700 font-medium">Low Attention</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-12 h-4 rounded" style={{ background: 'linear-gradient(to right, #ffff00, #ff0000)' }}></div>
+                      <span className="text-gray-700 font-medium">High Attention</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="bg-white rounded-lg p-6 shadow-inner text-center">
+                  <svg className="w-16 h-16 text-indigo-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-gray-700 font-medium mb-2">
+                    The similarity analysis was completed successfully!
+                  </p>
+                  <p className="text-gray-600 text-sm">
+                    Visual attention heatmap is not available for this model configuration, 
+                    but the similarity score provides a reliable measure of how well the 
+                    image matches your description.
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-12 h-4 rounded" style={{ background: 'linear-gradient(to right, #ffff00, #ff0000)' }}></div>
-                  <span className="text-gray-700 font-medium">High Attention</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         )}
