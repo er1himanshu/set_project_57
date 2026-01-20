@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,41 +6,66 @@
 
 @layer base {
   body {
-    @apply antialiased;
+    @apply antialiased bg-slate-50;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-optical-sizing: auto;
+  }
+  
+  * {
+    @apply border-slate-200;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-gradient-to-r from-primary-600 to-secondary-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-primary-700 hover:to-secondary-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl;
+    @apply relative overflow-hidden bg-gradient-to-r from-primary-600 via-primary-700 to-primary-800 text-white px-8 py-3.5 rounded-lg font-semibold hover:shadow-xl disabled:from-slate-400 disabled:to-slate-500 disabled:cursor-not-allowed transition-all duration-300 shadow-lg;
+  }
+  
+  .btn-primary:hover:not(:disabled) {
+    @apply shadow-xl transform -translate-y-0.5;
+  }
+  
+  .btn-primary:active:not(:disabled) {
+    @apply transform translate-y-0;
   }
   
   .btn-secondary {
-    @apply bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold border-2 border-gray-300 hover:border-primary-500 hover:text-primary-600 transition-all duration-200;
+    @apply bg-white text-slate-700 px-8 py-3.5 rounded-lg font-semibold border-2 border-slate-300 hover:border-primary-500 hover:text-primary-700 hover:bg-primary-50 transition-all duration-300 shadow-sm hover:shadow-md;
   }
   
   .card {
-    @apply bg-white rounded-2xl shadow-soft hover:shadow-medium transition-all duration-300;
+    @apply bg-white rounded-xl shadow-medium hover:shadow-strong transition-all duration-300 border border-slate-100;
+  }
+  
+  .card-glass {
+    @apply bg-white/80 backdrop-blur-xl rounded-xl shadow-glass border border-white/20;
   }
   
   .card-header {
-    @apply bg-gradient-to-r from-primary-600 to-secondary-600 px-8 py-6 rounded-t-2xl;
+    @apply bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 px-8 py-6 rounded-t-xl border-b border-slate-700;
   }
   
   .input-field {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200;
+    @apply w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-white;
   }
   
   .badge-success {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-success-100 text-success-800;
+    @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-success-100 text-success-800 border border-success-200;
   }
   
   .badge-danger {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-danger-100 text-danger-800;
+    @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-danger-100 text-danger-800 border border-danger-200;
   }
   
   .gradient-text {
-    @apply bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary-600 via-primary-700 to-slate-800 bg-clip-text text-transparent;
+  }
+  
+  .tech-border {
+    @apply border-2 border-slate-200 hover:border-primary-400 transition-colors duration-300;
+  }
+  
+  .glass-effect {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
   }
 }

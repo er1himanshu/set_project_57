@@ -36,7 +36,17 @@ def compute_attention_rollout(attentions: torch.Tensor, discard_ratio: float = 0
     
     Returns:
         np.ndarray: Rolled out attention map (num_patches,)
+        
+    Raises:
+        ValueError: If attentions tensor is None or has invalid dimensions
     """
+    # Guard: Check for None or empty tensor
+    if attentions is None:
+        raise ValueError("Attention tensor cannot be None")
+    
+    if attentions.numel() == 0:
+        raise ValueError("Attention tensor is empty (expected tensor with elements > 0)")
+    
     # Average attention across all heads
     attentions = torch.mean(attentions, dim=1)  # (num_layers, num_patches, num_patches)
     
@@ -174,6 +184,21 @@ def generate_clip_explanation(
         # Extract vision attention weights
         # CLIP ViT stores attention in vision_model.encoder.layers[i].self_attn
         vision_attentions = outputs.vision_model_output.attentions
+        
+        # Guard: Check if attention outputs are available
+        if vision_attentions is None or len(vision_attentions) == 0:
+            raise ValueError(
+                "Attention outputs are not available from the CLIP model. "
+                "This may occur if the model does not support attention visualization "
+                "or if the model architecture has changed."
+            )
+        
+        # Guard: Check for None tensors in attention list
+        if any(att is None for att in vision_attentions):
+            raise ValueError(
+                "Some attention tensors are missing (None). "
+                "The model may not have generated complete attention outputs."
+            )
         
         # Stack attention tensors from all layers
         # Shape: (num_layers, batch_size, num_heads, num_patches, num_patches)
