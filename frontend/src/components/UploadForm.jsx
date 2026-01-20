@@ -335,7 +335,7 @@ export default function UploadForm() {
                 {explanation.explanation}
               </p>
               
-              {explanation.heatmap_base64 ? (
+              {explanation.attention_available && explanation.heatmap_base64 ? (
                 <>
                   <div className="bg-white rounded-lg p-4 shadow-inner">
                     <img 

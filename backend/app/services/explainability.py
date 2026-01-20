@@ -9,6 +9,7 @@ the Vision Transformer layers.
 import logging
 import base64
 import io
+import math
 from typing import Tuple, Optional
 import numpy as np
 import torch
@@ -215,7 +216,6 @@ def generate_clip_explanation(
             attention_map = compute_attention_rollout(attention_stack)
             
             # Determine grid size from model architecture
-            import math
             num_patches = attention_map.shape[0]
             grid_size = int(math.sqrt(num_patches))
             
