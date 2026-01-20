@@ -244,9 +244,10 @@ def generate_clip_explanation(
         except (ValueError, AttributeError, RuntimeError) as attention_error:
             # Attention processing failed - return fallback without heatmap
             # This handles cases where:
-            # 1. Model doesn't support attention outputs (vision_attentions is None)
-            # 2. Some attention tensors are missing (contains None values)
-            # 3. Attention processing encounters runtime errors
+            # 1. Model doesn't support attention outputs (vision_attentions is None) - AttributeError/ValueError
+            # 2. Some attention tensors are missing (contains None values) - ValueError
+            # 3. Attention processing encounters runtime errors (tensor operations) - RuntimeError
+            # Note: Other unexpected errors are caught by the outer exception handler
             logger.warning(f"Attention processing unavailable, returning fallback: {str(attention_error)}")
             
             return {
