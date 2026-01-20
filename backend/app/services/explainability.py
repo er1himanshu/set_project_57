@@ -175,10 +175,24 @@ def generate_clip_explanation(
         # CLIP ViT stores attention in vision_model.encoder.layers[i].self_attn
         vision_attentions = outputs.vision_model_output.attentions
         
-        # Stack attention tensors from all layers
-        # Shape: (num_layers, batch_size, num_heads, num_patches, num_patches)
-        attention_stack = torch.stack(vision_attentions)
-        attention_stack = attention_stack.squeeze(1)  # Remove batch dimension
+        # Guard against None or empty attention tensors
+        if vision_attentions is None:
+            logger.warning("Attention weights not available from CLIP model")
+            raise Exception("CLIP model returned no attention weights. This model may not support explainability.")
+        
+        if len(vision_attentions) == 0:
+            logger.warning("Empty attention tensors from CLIP model")
+            raise Exception("CLIP model returned empty attention tensors. Cannot generate explanation.")
+        
+        # Validate attention tensor structure
+        try:
+            # Stack attention tensors from all layers
+            # Shape: (num_layers, batch_size, num_heads, num_patches, num_patches)
+            attention_stack = torch.stack(vision_attentions)
+            attention_stack = attention_stack.squeeze(1)  # Remove batch dimension
+        except (RuntimeError, ValueError) as e:
+            logger.error(f"Failed to stack attention tensors: {str(e)}")
+            raise Exception(f"Invalid attention tensor structure: {str(e)}")
         
         # Compute attention rollout
         attention_map = compute_attention_rollout(attention_stack)
