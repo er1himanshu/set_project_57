@@ -35,6 +35,18 @@ PRODUCT_CATEGORIES = [
     "book", "notebook"
 ]
 
+# Related category groups (for avoiding false positive mismatches)
+RELATED_CATEGORY_GROUPS = [
+    {"shoes", "boots", "sneakers", "sandals"},
+    {"bike", "bicycle", "motorcycle"},
+    {"bag", "handbag", "backpack", "purse"},
+    {"dress", "shirt", "pants", "jeans", "jacket", "coat"},
+    {"watch", "jewelry", "necklace", "ring", "bracelet"},
+]
+
+# Category detection confidence threshold
+CATEGORY_CONFIDENCE_THRESHOLD = 0.3
+
 
 class MismatchDetectionUnavailableError(Exception):
     """Raised when mismatch detection is not available (e.g., model not loaded)."""
@@ -81,6 +93,7 @@ def get_clip_model():
 def extract_category_from_text(text: str) -> Optional[str]:
     """
     Extract product category from description text.
+    Returns the longest matching category to prioritize more specific terms.
     
     Args:
         text: Product description text
@@ -93,12 +106,17 @@ def extract_category_from_text(text: str) -> Optional[str]:
     
     text_lower = text.lower()
     
-    # Look for category keywords in the text
+    # Find all matching categories
+    matches = []
     for category in PRODUCT_CATEGORIES:
         # Use word boundaries to match whole words
         pattern = r'\b' + re.escape(category) + r'\b'
         if re.search(pattern, text_lower):
-            return category
+            matches.append(category)
+    
+    # Return the longest match (most specific)
+    if matches:
+        return max(matches, key=len)
     
     return None
 
@@ -224,19 +242,11 @@ def detect_mismatch(image_path: str, description: str, threshold: Optional[float
             if description_category and image_category and category_confidence:
                 # Check if categories are different (allowing for related terms)
                 # Consider it a category mismatch if they're completely different
-                if description_category != image_category and category_confidence > 0.3:
+                if description_category != image_category and category_confidence > CATEGORY_CONFIDENCE_THRESHOLD:
                     # Check if they're related (e.g., shoes vs sneakers, bike vs bicycle)
-                    related_groups = [
-                        {"shoes", "boots", "sneakers", "sandals"},
-                        {"bike", "bicycle", "motorcycle"},
-                        {"bag", "handbag", "backpack", "purse"},
-                        {"dress", "shirt", "pants", "jeans", "jacket", "coat"},
-                        {"watch", "jewelry", "necklace", "ring", "bracelet"},
-                    ]
-                    
                     are_related = any(
                         description_category in group and image_category in group 
-                        for group in related_groups
+                        for group in RELATED_CATEGORY_GROUPS
                     )
                     
                     if not are_related:
