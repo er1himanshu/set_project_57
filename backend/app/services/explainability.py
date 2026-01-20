@@ -9,6 +9,7 @@ the Vision Transformer layers.
 import logging
 import base64
 import io
+import math
 from typing import Tuple, Optional
 import numpy as np
 import torch
@@ -243,7 +244,8 @@ def generate_clip_explanation(
         if attention_available:
             # Extract vision attention weights
             # CLIP ViT stores attention in vision_model.encoder.layers[i].self_attn
-            vision_attentions = outputs.vision_model_output.attentions if hasattr(outputs, 'vision_model_output') else None
+            vision_model_output = getattr(outputs, 'vision_model_output', None)
+            vision_attentions = getattr(vision_model_output, 'attentions', None) if vision_model_output else None
             
             # Guard: Check if attention outputs are available
             if vision_attentions is None or len(vision_attentions) == 0:
@@ -268,7 +270,6 @@ def generate_clip_explanation(
                 # For CLIP ViT models, patches are arranged in a square grid
                 # Total patches = (image_size / patch_size) ^ 2
                 # For ViT-B/32: 224/32 = 7, so 7x7 grid
-                import math
                 num_patches = attention_map.shape[0]
                 grid_size = int(math.sqrt(num_patches))
                 
