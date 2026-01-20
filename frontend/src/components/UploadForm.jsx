@@ -329,7 +329,7 @@ export default function UploadForm() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
-                Attention Heatmap
+                {!explanation.attention_available ? 'Visual Analysis' : 'Attention Heatmap'}
               </h4>
               <p className="text-gray-700 mb-4 text-sm">
                 {explanation.explanation}
@@ -337,21 +337,23 @@ export default function UploadForm() {
               <div className="bg-white rounded-lg p-4 shadow-inner">
                 <img 
                   src={`data:image/png;base64,${explanation.heatmap_base64}`} 
-                  alt="Attention Heatmap" 
+                  alt={!explanation.attention_available ? 'Product Image' : 'Attention Heatmap'} 
                   className="max-w-full h-auto rounded-lg shadow-lg mx-auto"
                   style={{ maxHeight: '500px' }}
                 />
               </div>
-              <div className="mt-4 flex items-center justify-center gap-6 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-12 h-4 rounded" style={{ background: 'linear-gradient(to right, #0000ff, #00ffff)' }}></div>
-                  <span className="text-gray-700 font-medium">Low Attention</span>
+              {explanation.attention_available && (
+                <div className="mt-4 flex items-center justify-center gap-6 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-12 h-4 rounded" style={{ background: 'linear-gradient(to right, #0000ff, #00ffff)' }}></div>
+                    <span className="text-gray-700 font-medium">Low Attention</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-12 h-4 rounded" style={{ background: 'linear-gradient(to right, #ffff00, #ff0000)' }}></div>
+                    <span className="text-gray-700 font-medium">High Attention</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-12 h-4 rounded" style={{ background: 'linear-gradient(to right, #ffff00, #ff0000)' }}></div>
-                  <span className="text-gray-700 font-medium">High Attention</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         )}
