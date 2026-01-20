@@ -196,7 +196,8 @@ def generate_clip_explanation(
         # If attention is unavailable, we'll return a fallback response with just the similarity score
         try:
             # Extract vision attention weights
-            vision_attentions = outputs.vision_model_output.attentions
+            # Note: This may raise AttributeError if model doesn't support attention outputs
+            vision_attentions = getattr(outputs.vision_model_output, 'attentions', None)
             
             # Guard: Check if attention outputs are available
             if vision_attentions is None or len(vision_attentions) == 0:
