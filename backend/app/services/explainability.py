@@ -4,6 +4,12 @@ CLIP Explainability using Vision Transformer (ViT) Attention Rollout
 This module provides functionality to visualize which parts of an image
 contribute most to CLIP's similarity score using attention rollout from
 the Vision Transformer layers.
+
+Graceful Fallback:
+When attention tensors are not available (e.g., on some CLIP model setups),
+the module automatically falls back to a similarity-only explanation without
+attention visualization. This ensures the explainability feature always returns
+a meaningful response rather than failing with an error.
 """
 
 import logging
