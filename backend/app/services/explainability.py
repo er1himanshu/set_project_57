@@ -144,7 +144,7 @@ def generate_clip_explanation(
         threshold: Optional similarity threshold
     
     Returns:
-        dict: Explanation results including similarity score and heatmap
+        dict: Explanation results including similarity score and heatmap (or fallback)
     
     Raises:
         MismatchDetectionUnavailableError: If CLIP model is not available
@@ -170,62 +170,20 @@ def generate_clip_explanation(
         
         # Get model outputs with attention weights
         # Note: output_attentions is supported by CLIP ViT models
+        attention_available = True
         with torch.no_grad():
             try:
                 outputs = model(**inputs, output_attentions=True)
             except TypeError:
                 # Model may not support output_attentions parameter
-                raise Exception("CLIP model does not support attention output. Please use a compatible CLIP ViT model.")
+                # Fall back to basic similarity scoring without attention
+                logger.warning("CLIP model does not support attention output, falling back to basic similarity")
+                attention_available = False
+                outputs = model(**inputs)
         
         # Calculate similarity score
         logits_per_image = outputs.logits_per_image
         similarity_score = torch.sigmoid(logits_per_image / 100.0).item()
-        
-        # Extract vision attention weights
-        # CLIP ViT stores attention in vision_model.encoder.layers[i].self_attn
-        vision_attentions = outputs.vision_model_output.attentions
-        
-        # Guard: Check if attention outputs are available
-        if vision_attentions is None or len(vision_attentions) == 0:
-            raise ValueError(
-                "Attention outputs are not available from the CLIP model. "
-                "This may occur if the model does not support attention visualization "
-                "or if the model architecture has changed."
-            )
-        
-        # Guard: Check for None tensors in attention list
-        if any(att is None for att in vision_attentions):
-            raise ValueError(
-                "Some attention tensors are missing (None). "
-                "The model may not have generated complete attention outputs."
-            )
-        
-        # Stack attention tensors from all layers
-        # Shape: (num_layers, batch_size, num_heads, num_patches, num_patches)
-        attention_stack = torch.stack(vision_attentions)
-        attention_stack = attention_stack.squeeze(1)  # Remove batch dimension
-        
-        # Compute attention rollout
-        attention_map = compute_attention_rollout(attention_stack)
-        
-        # Determine grid size from model architecture
-        # For CLIP ViT models, patches are arranged in a square grid
-        # Total patches = (image_size / patch_size) ^ 2
-        # For ViT-B/32: 224/32 = 7, so 7x7 grid
-        import math
-        num_patches = attention_map.shape[0]
-        grid_size = int(math.sqrt(num_patches))
-        
-        # Create heatmap overlay
-        heatmap_image = create_heatmap_overlay(
-            image_path=image_path,
-            attention_map=attention_map,
-            grid_size=grid_size,
-            alpha=0.5
-        )
-        
-        # Encode heatmap to base64
-        heatmap_base64 = encode_image_to_base64(heatmap_image, format="PNG")
         
         # Determine if mismatch
         is_mismatch = similarity_score < (threshold if threshold else 0.25)
@@ -236,15 +194,88 @@ def generate_clip_explanation(
         else:
             message = f"Match confirmed (score: {similarity_score:.2f})"
         
-        logger.info(f"Generated CLIP explanation: {message}")
+        # Try to extract and process attention weights if available
+        if attention_available:
+            try:
+                # Extract vision attention weights
+                vision_attentions = outputs.vision_model_output.attentions
+                
+                # Guard: Check if attention outputs are available
+                if vision_attentions is None or len(vision_attentions) == 0:
+                    logger.warning("Attention outputs are not available, using fallback explanation")
+                    attention_available = False
+                # Guard: Check for None tensors in attention list
+                elif any(att is None for att in vision_attentions):
+                    logger.warning("Some attention tensors are missing, using fallback explanation")
+                    attention_available = False
+                else:
+                    # Stack attention tensors from all layers
+                    attention_stack = torch.stack(vision_attentions)
+                    attention_stack = attention_stack.squeeze(1)  # Remove batch dimension
+                    
+                    # Compute attention rollout
+                    attention_map = compute_attention_rollout(attention_stack)
+                    
+                    # Determine grid size from model architecture
+                    import math
+                    num_patches = attention_map.shape[0]
+                    grid_size = int(math.sqrt(num_patches))
+                    
+                    # Create heatmap overlay
+                    heatmap_image = create_heatmap_overlay(
+                        image_path=image_path,
+                        attention_map=attention_map,
+                        grid_size=grid_size,
+                        alpha=0.5
+                    )
+                    
+                    # Encode heatmap to base64
+                    heatmap_base64 = encode_image_to_base64(heatmap_image, format="PNG")
+                    
+                    logger.info(f"Generated CLIP explanation with attention heatmap: {message}")
+                    
+                    return {
+                        "similarity_score": float(similarity_score),
+                        "has_mismatch": is_mismatch,
+                        "message": message,
+                        "heatmap_base64": heatmap_base64,
+                        "explanation": "Heatmap shows which image regions most influenced the similarity score. Warmer colors (red/yellow) indicate higher attention.",
+                        "attention_available": True
+                    }
+            except Exception as attn_error:
+                logger.warning(f"Error processing attention weights: {str(attn_error)}, using fallback explanation")
+                attention_available = False
         
-        return {
-            "similarity_score": float(similarity_score),
-            "has_mismatch": is_mismatch,
-            "message": message,
-            "heatmap_base64": heatmap_base64,
-            "explanation": "Heatmap shows which image regions most influenced the similarity score. Warmer colors (red/yellow) indicate higher attention."
-        }
+        # Fallback: Return explanation without attention heatmap
+        # When attention is unavailable, provide basic similarity-based explanation
+        if not attention_available:
+            logger.info(f"Generated CLIP explanation without attention (fallback): {message}")
+            
+            # Create a simple fallback explanation based on similarity score
+            fallback_explanation = (
+                "Attention-based visualization is not available for this model configuration. "
+                "The CLIP model compared your image and description using learned semantic features. "
+            )
+            
+            if is_mismatch:
+                fallback_explanation += (
+                    f"The similarity score of {similarity_score:.2%} suggests the image and description "
+                    f"may not match well. Consider reviewing if the description accurately represents the image content."
+                )
+            else:
+                fallback_explanation += (
+                    f"The similarity score of {similarity_score:.2%} indicates a good match between "
+                    f"the image and description."
+                )
+            
+            return {
+                "similarity_score": float(similarity_score),
+                "has_mismatch": is_mismatch,
+                "message": message,
+                "heatmap_base64": None,
+                "explanation": fallback_explanation,
+                "attention_available": False
+            }
         
     except MismatchDetectionUnavailableError:
         logger.warning("CLIP model unavailable for explanation generation")
