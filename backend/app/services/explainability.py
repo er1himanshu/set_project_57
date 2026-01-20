@@ -9,6 +9,7 @@ the Vision Transformer layers.
 import logging
 import base64
 import io
+import math
 from typing import Tuple, Optional
 import numpy as np
 import torch
@@ -20,6 +21,9 @@ from .mismatch_detector import get_clip_model, MismatchDetectionUnavailableError
 from ..config import CLIP_MODEL_NAME
 
 logger = logging.getLogger(__name__)
+
+# Constants for fallback visualization
+GRADIENT_RANGE = 128  # Range for gradient intensity in fallback heatmap
 
 
 def compute_attention_rollout(attentions: torch.Tensor, discard_ratio: float = 0.9) -> np.ndarray:
@@ -130,6 +134,75 @@ def encode_image_to_base64(image: Image.Image, format: str = "PNG") -> str:
     return base64.b64encode(img_bytes).decode('utf-8')
 
 
+def create_simple_heatmap(
+    image_path: str,
+    alpha: float = 0.3
+) -> Image.Image:
+    """
+    Create a simple uniform heatmap overlay when attention is unavailable.
+    
+    Args:
+        image_path: Path to the original image
+        alpha: Transparency of heatmap overlay (0=transparent, 1=opaque)
+    
+    Returns:
+        PIL.Image: Image with uniform heatmap overlay
+    """
+    # Load original image
+    original_img = Image.open(image_path).convert("RGB")
+    img_array = np.array(original_img)
+    
+    # Create a uniform gradient from center to edges
+    h, w = img_array.shape[:2]
+    y, x = np.ogrid[:h, :w]
+    center_y, center_x = h // 2, w // 2
+    
+    # Distance from center
+    dist = np.sqrt((x - center_x)**2 + (y - center_y)**2)
+    max_dist = np.sqrt(center_x**2 + center_y**2)
+    
+    # Guard against division by zero for very small images (use epsilon)
+    if max_dist < 1e-8:
+        max_dist = 1.0
+    
+    # Normalize to 0-255 (center bright, edges darker)
+    # Use np.clip to prevent overflow
+    heatmap = np.clip(255 - (dist / max_dist * GRADIENT_RANGE), 0, 255).astype(np.uint8)
+    
+    # Apply colormap
+    heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+    heatmap_colored = cv2.cvtColor(heatmap_colored, cv2.COLOR_BGR2RGB)
+    
+    # Blend with original image
+    overlayed = cv2.addWeighted(img_array, 1 - alpha, heatmap_colored, alpha, 0)
+    
+    return Image.fromarray(overlayed)
+
+
+def generate_fallback_explanation(
+    image_path: str,
+    reason: str
+) -> Tuple[str, str]:
+    """
+    Generate fallback heatmap and explanation message.
+    
+    Args:
+        image_path: Path to the image file
+        reason: Reason for using fallback
+        
+    Returns:
+        Tuple[str, str]: Base64-encoded heatmap and explanation text
+    """
+    heatmap_image = create_simple_heatmap(image_path=image_path, alpha=0.3)
+    heatmap_base64 = encode_image_to_base64(heatmap_image, format="PNG")
+    explanation_text = (
+        f"Note: Full attention visualization is not available because {reason}. "
+        "The visualization shows a simplified representation. "
+        "The similarity score is still computed using the CLIP model and remains accurate."
+    )
+    return heatmap_base64, explanation_text
+
+
 def generate_clip_explanation(
     image_path: str,
     description: str,
@@ -137,6 +210,7 @@ def generate_clip_explanation(
 ) -> dict:
     """
     Generate CLIP explanation with attention rollout heatmap.
+    Falls back to simple visualization if attention is unavailable.
     
     Args:
         image_path: Path to the image file
@@ -170,62 +244,80 @@ def generate_clip_explanation(
         
         # Get model outputs with attention weights
         # Note: output_attentions is supported by CLIP ViT models
+        use_fallback = False
+        fallback_reason = ""
+        
         with torch.no_grad():
+            # Try to get outputs with attention
+            # We'll catch TypeError if the model doesn't support it
             try:
                 outputs = model(**inputs, output_attentions=True)
-            except TypeError:
-                # Model may not support output_attentions parameter
-                raise Exception("CLIP model does not support attention output. Please use a compatible CLIP ViT model.")
+            except TypeError as e:
+                # Model doesn't support output_attentions parameter
+                logger.warning(f"Model doesn't support output_attentions: {str(e)}, using fallback")
+                outputs = model(**inputs)
+                use_fallback = True
+                fallback_reason = "model does not support attention visualization"
         
         # Calculate similarity score
         logits_per_image = outputs.logits_per_image
         similarity_score = torch.sigmoid(logits_per_image / 100.0).item()
         
-        # Extract vision attention weights
-        # CLIP ViT stores attention in vision_model.encoder.layers[i].self_attn
-        vision_attentions = outputs.vision_model_output.attentions
+        # Try to extract vision attention weights if not already using fallback
+        if not use_fallback:
+            vision_attentions = outputs.vision_model_output.attentions
+            
+            # Check if attention outputs are available
+            if vision_attentions is None or len(vision_attentions) == 0:
+                logger.warning("Attention outputs are not available from the CLIP model, using fallback")
+                use_fallback = True
+                fallback_reason = "attention outputs not available from model"
+            # Check for None tensors in attention list
+            elif any(att is None for att in vision_attentions):
+                logger.warning("Some attention tensors are missing, using fallback")
+                use_fallback = True
+                fallback_reason = "some attention tensors are incomplete"
         
-        # Guard: Check if attention outputs are available
-        if vision_attentions is None or len(vision_attentions) == 0:
-            raise ValueError(
-                "Attention outputs are not available from the CLIP model. "
-                "This may occur if the model does not support attention visualization "
-                "or if the model architecture has changed."
+        # Generate heatmap based on whether attention is available
+        if use_fallback:
+            # Use simple fallback visualization
+            heatmap_base64, explanation_text = generate_fallback_explanation(
+                image_path=image_path,
+                reason=fallback_reason
             )
-        
-        # Guard: Check for None tensors in attention list
-        if any(att is None for att in vision_attentions):
-            raise ValueError(
-                "Some attention tensors are missing (None). "
-                "The model may not have generated complete attention outputs."
-            )
-        
-        # Stack attention tensors from all layers
-        # Shape: (num_layers, batch_size, num_heads, num_patches, num_patches)
-        attention_stack = torch.stack(vision_attentions)
-        attention_stack = attention_stack.squeeze(1)  # Remove batch dimension
-        
-        # Compute attention rollout
-        attention_map = compute_attention_rollout(attention_stack)
-        
-        # Determine grid size from model architecture
-        # For CLIP ViT models, patches are arranged in a square grid
-        # Total patches = (image_size / patch_size) ^ 2
-        # For ViT-B/32: 224/32 = 7, so 7x7 grid
-        import math
-        num_patches = attention_map.shape[0]
-        grid_size = int(math.sqrt(num_patches))
-        
-        # Create heatmap overlay
-        heatmap_image = create_heatmap_overlay(
-            image_path=image_path,
-            attention_map=attention_map,
-            grid_size=grid_size,
-            alpha=0.5
-        )
-        
-        # Encode heatmap to base64
-        heatmap_base64 = encode_image_to_base64(heatmap_image, format="PNG")
+        else:
+            # Use attention-based visualization
+            try:
+                # Stack attention tensors from all layers
+                attention_stack = torch.stack(vision_attentions)
+                attention_stack = attention_stack.squeeze(1)  # Remove batch dimension
+                
+                # Compute attention rollout
+                attention_map = compute_attention_rollout(attention_stack)
+                
+                # Determine grid size from model architecture
+                num_patches = attention_map.shape[0]
+                grid_size = int(math.sqrt(num_patches))
+                
+                # Create heatmap overlay
+                heatmap_image = create_heatmap_overlay(
+                    image_path=image_path,
+                    attention_map=attention_map,
+                    grid_size=grid_size,
+                    alpha=0.5
+                )
+                
+                # Encode heatmap to base64
+                heatmap_base64 = encode_image_to_base64(heatmap_image, format="PNG")
+                explanation_text = "Heatmap shows which image regions most influenced the similarity score. Warmer colors (red/yellow) indicate higher attention."
+            except (RuntimeError, ValueError, AttributeError) as e:
+                # If attention processing fails, fall back to simple visualization
+                # These are the expected exceptions during attention processing
+                logger.warning(f"Error processing attention maps: {str(e)}, using fallback")
+                heatmap_base64, explanation_text = generate_fallback_explanation(
+                    image_path=image_path,
+                    reason="an error occurred during attention processing"
+                )
         
         # Determine if mismatch
         is_mismatch = similarity_score < (threshold if threshold else 0.25)
@@ -243,7 +335,7 @@ def generate_clip_explanation(
             "has_mismatch": is_mismatch,
             "message": message,
             "heatmap_base64": heatmap_base64,
-            "explanation": "Heatmap shows which image regions most influenced the similarity score. Warmer colors (red/yellow) indicate higher attention."
+            "explanation": explanation_text
         }
         
     except MismatchDetectionUnavailableError:
