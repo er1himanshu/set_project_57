@@ -6,7 +6,8 @@ their descriptions using a pretrained multimodal CLIP model.
 """
 
 import logging
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
+import re
 import torch
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel
@@ -19,6 +20,20 @@ _model_cache = {}
 
 # Error message constant
 MISMATCH_DETECTION_UNAVAILABLE_MSG = "Image-text mismatch detection is unavailable"
+
+# Common product categories for ecommerce
+PRODUCT_CATEGORIES = [
+    "shoes", "boots", "sneakers", "sandals",
+    "bike", "bicycle", "motorcycle",
+    "bag", "handbag", "backpack", "purse",
+    "dress", "shirt", "pants", "jeans", "jacket", "coat",
+    "watch", "sunglasses", "glasses",
+    "phone", "laptop", "camera", "electronics",
+    "furniture", "chair", "table", "sofa",
+    "jewelry", "necklace", "ring", "bracelet",
+    "toy", "doll", "action figure",
+    "book", "notebook"
+]
 
 
 class MismatchDetectionUnavailableError(Exception):
@@ -61,6 +76,91 @@ def get_clip_model():
         )
     
     return _model_cache['model'], _model_cache['processor']
+
+
+def extract_category_from_text(text: str) -> Optional[str]:
+    """
+    Extract product category from description text.
+    
+    Args:
+        text: Product description text
+        
+    Returns:
+        Optional[str]: Detected category or None if not found
+    """
+    if not text:
+        return None
+    
+    text_lower = text.lower()
+    
+    # Look for category keywords in the text
+    for category in PRODUCT_CATEGORIES:
+        # Use word boundaries to match whole words
+        pattern = r'\b' + re.escape(category) + r'\b'
+        if re.search(pattern, text_lower):
+            return category
+    
+    return None
+
+
+def detect_image_category(image_path: str, categories: List[str] = None) -> Tuple[Optional[str], Optional[float]]:
+    """
+    Detect the most likely category for an image using CLIP.
+    
+    Args:
+        image_path: Path to the image file
+        categories: List of categories to check (uses PRODUCT_CATEGORIES if None)
+        
+    Returns:
+        Tuple[Optional[str], Optional[float]]: 
+            - best_category: Most likely category or None
+            - confidence: Confidence score (0-1) or None
+    """
+    if categories is None:
+        categories = PRODUCT_CATEGORIES
+    
+    try:
+        # Load model and processor
+        model, processor = get_clip_model()
+        
+        # Load and process image
+        image = Image.open(image_path).convert("RGB")
+        
+        # Prepare text prompts for each category
+        # Use template to make it more specific to product images
+        text_prompts = [f"a photo of {category}" for category in categories]
+        
+        # Prepare inputs
+        inputs = processor(
+            text=text_prompts,
+            images=image,
+            return_tensors="pt",
+            padding=True
+        )
+        
+        # Get model outputs
+        with torch.no_grad():
+            outputs = model(**inputs)
+        
+        # Get similarity scores for each category
+        logits_per_image = outputs.logits_per_image  # Shape: (1, num_categories)
+        probs = logits_per_image.softmax(dim=1).squeeze(0)  # Convert to probabilities
+        
+        # Find the best matching category
+        best_idx = probs.argmax().item()
+        best_category = categories[best_idx]
+        confidence = probs[best_idx].item()
+        
+        logger.info(f"Image category detected: {best_category} (confidence: {confidence:.2f})")
+        
+        return best_category, float(confidence)
+        
+    except MismatchDetectionUnavailableError:
+        logger.warning("Category detection unavailable: CLIP model not loaded")
+        return None, None
+    except Exception as e:
+        logger.warning(f"Category detection failed: {type(e).__name__}: {str(e)}")
+        return None, None
 
 
 def detect_mismatch(image_path: str, description: str, threshold: Optional[float] = None) -> Tuple[bool, Optional[float], str]:
@@ -114,9 +214,42 @@ def detect_mismatch(image_path: str, description: str, threshold: Optional[float
         # Determine if there's a mismatch using the provided threshold
         is_mismatch = similarity_score < threshold
         
-        # Generate message
+        # Enhanced messaging: Check category mismatch if basic mismatch detected
+        message = ""
         if is_mismatch:
-            message = f"Mismatch detected (score: {similarity_score:.2f})"
+            # Try to detect category mismatch for more specific messaging
+            description_category = extract_category_from_text(description)
+            image_category, category_confidence = detect_image_category(image_path)
+            
+            if description_category and image_category and category_confidence:
+                # Check if categories are different (allowing for related terms)
+                # Consider it a category mismatch if they're completely different
+                if description_category != image_category and category_confidence > 0.3:
+                    # Check if they're related (e.g., shoes vs sneakers, bike vs bicycle)
+                    related_groups = [
+                        {"shoes", "boots", "sneakers", "sandals"},
+                        {"bike", "bicycle", "motorcycle"},
+                        {"bag", "handbag", "backpack", "purse"},
+                        {"dress", "shirt", "pants", "jeans", "jacket", "coat"},
+                        {"watch", "jewelry", "necklace", "ring", "bracelet"},
+                    ]
+                    
+                    are_related = any(
+                        description_category in group and image_category in group 
+                        for group in related_groups
+                    )
+                    
+                    if not are_related:
+                        message = (
+                            f"Mismatch detected: Description says '{description_category}', "
+                            f"but image looks like '{image_category}' (score: {similarity_score:.2f})"
+                        )
+                    else:
+                        message = f"Mismatch detected (score: {similarity_score:.2f})"
+                else:
+                    message = f"Mismatch detected (score: {similarity_score:.2f})"
+            else:
+                message = f"Mismatch detected (score: {similarity_score:.2f})"
         else:
             message = f"Match confirmed (score: {similarity_score:.2f})"
         
