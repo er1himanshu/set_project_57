@@ -161,6 +161,10 @@ def create_simple_heatmap(
     dist = np.sqrt((x - center_x)**2 + (y - center_y)**2)
     max_dist = np.sqrt(center_x**2 + center_y**2)
     
+    # Guard against division by zero for very small images
+    if max_dist == 0:
+        max_dist = 1.0
+    
     # Normalize to 0-255 (center bright, edges darker)
     heatmap = 255 - (dist / max_dist * GRADIENT_RANGE).astype(np.uint8)
     
@@ -245,12 +249,16 @@ def generate_clip_explanation(
         with torch.no_grad():
             try:
                 outputs = model(**inputs, output_attentions=True)
-            except TypeError:
-                # Model may not support output_attentions parameter
-                logger.warning("CLIP model does not support output_attentions parameter, using fallback")
-                outputs = model(**inputs)
-                use_fallback = True
-                fallback_reason = "model does not support attention visualization"
+            except TypeError as e:
+                # Check if error is related to output_attentions parameter
+                if "output_attentions" in str(e) or "unexpected keyword argument" in str(e):
+                    logger.warning("CLIP model does not support output_attentions parameter, using fallback")
+                    outputs = model(**inputs)
+                    use_fallback = True
+                    fallback_reason = "model does not support attention visualization"
+                else:
+                    # Re-raise if it's a different TypeError
+                    raise
         
         # Calculate similarity score
         logits_per_image = outputs.logits_per_image
