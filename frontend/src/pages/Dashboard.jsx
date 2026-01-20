@@ -63,7 +63,7 @@ export default function Dashboard() {
                     </svg>
                   </div>
                   <div className="text-left">
-                    <div className="text-2xl font-bold text-white">< 2s</div>
+                    <div className="text-2xl font-bold text-white">&lt;2s</div>
                     <div className="text-sm text-slate-400 font-medium">Analysis Time</div>
                   </div>
                 </div>

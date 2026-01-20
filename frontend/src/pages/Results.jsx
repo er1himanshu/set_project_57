@@ -23,8 +23,11 @@ export default function Results() {
 
   const passedCount = results.filter(r => r.passed).length;
   const failedCount = results.length - passedCount;
-  const averageScore = results.length > 0
-    ? results.reduce((sum, r) => sum + (r.similarity_score || 0), 0) / results.length
+  
+  // Calculate average similarity score, filtering out null values
+  const validScores = results.filter(r => r.similarity_score !== null && r.similarity_score !== undefined);
+  const averageScore = validScores.length > 0
+    ? validScores.reduce((sum, r) => sum + r.similarity_score, 0) / validScores.length
     : 0;
 
   return (
