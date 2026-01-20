@@ -9,6 +9,7 @@ the Vision Transformer layers.
 import logging
 import base64
 import io
+import math
 from typing import Tuple, Optional
 import numpy as np
 import torch
@@ -20,6 +21,9 @@ from .mismatch_detector import get_clip_model, MismatchDetectionUnavailableError
 from ..config import CLIP_MODEL_NAME
 
 logger = logging.getLogger(__name__)
+
+# Constants for fallback visualization
+GRADIENT_RANGE = 128  # Range for gradient intensity in fallback heatmap
 
 
 def compute_attention_rollout(attentions: torch.Tensor, discard_ratio: float = 0.9) -> np.ndarray:
@@ -158,7 +162,7 @@ def create_simple_heatmap(
     max_dist = np.sqrt(center_x**2 + center_y**2)
     
     # Normalize to 0-255 (center bright, edges darker)
-    heatmap = 255 - (dist / max_dist * 128).astype(np.uint8)
+    heatmap = 255 - (dist / max_dist * GRADIENT_RANGE).astype(np.uint8)
     
     # Apply colormap
     heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
@@ -168,6 +172,30 @@ def create_simple_heatmap(
     overlayed = cv2.addWeighted(img_array, 1 - alpha, heatmap_colored, alpha, 0)
     
     return Image.fromarray(overlayed)
+
+
+def generate_fallback_explanation(
+    image_path: str,
+    reason: str
+) -> Tuple[str, str]:
+    """
+    Generate fallback heatmap and explanation message.
+    
+    Args:
+        image_path: Path to the image file
+        reason: Reason for using fallback
+        
+    Returns:
+        Tuple[str, str]: Base64-encoded heatmap and explanation text
+    """
+    heatmap_image = create_simple_heatmap(image_path=image_path, alpha=0.3)
+    heatmap_base64 = encode_image_to_base64(heatmap_image, format="PNG")
+    explanation_text = (
+        f"Note: Full attention visualization is not available because {reason}. "
+        "The visualization shows a simplified representation. "
+        "The similarity score is still computed using the CLIP model and remains accurate."
+    )
+    return heatmap_base64, explanation_text
 
 
 def generate_clip_explanation(
@@ -246,15 +274,9 @@ def generate_clip_explanation(
         # Generate heatmap based on whether attention is available
         if use_fallback:
             # Use simple fallback visualization
-            heatmap_image = create_simple_heatmap(
+            heatmap_base64, explanation_text = generate_fallback_explanation(
                 image_path=image_path,
-                alpha=0.3
-            )
-            heatmap_base64 = encode_image_to_base64(heatmap_image, format="PNG")
-            explanation_text = (
-                f"Note: Full attention visualization is not available because {fallback_reason}. "
-                "The visualization shows a simplified representation. "
-                "The similarity score is still computed using the CLIP model and remains accurate."
+                reason=fallback_reason
             )
         else:
             # Use attention-based visualization
@@ -267,7 +289,6 @@ def generate_clip_explanation(
                 attention_map = compute_attention_rollout(attention_stack)
                 
                 # Determine grid size from model architecture
-                import math
                 num_patches = attention_map.shape[0]
                 grid_size = int(math.sqrt(num_patches))
                 
@@ -285,15 +306,9 @@ def generate_clip_explanation(
             except Exception as e:
                 # If attention processing fails, fall back to simple visualization
                 logger.warning(f"Error processing attention maps: {str(e)}, using fallback")
-                heatmap_image = create_simple_heatmap(
+                heatmap_base64, explanation_text = generate_fallback_explanation(
                     image_path=image_path,
-                    alpha=0.3
-                )
-                heatmap_base64 = encode_image_to_base64(heatmap_image, format="PNG")
-                explanation_text = (
-                    f"Note: Full attention visualization encountered an error. "
-                    "The visualization shows a simplified representation. "
-                    "The similarity score is still computed using the CLIP model and remains accurate."
+                    reason="an error occurred during attention processing"
                 )
         
         # Determine if mismatch
