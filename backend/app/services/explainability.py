@@ -212,7 +212,7 @@ def generate_clip_explanation(
                 "explanation": (
                     "⚠️ Attention visualization is not available for this model. "
                     "The similarity score is based on CLIP's understanding of how well the image matches the description. "
-                    f"A score of {similarity_score:.1%} {'suggests a potential mismatch' if is_mismatch else 'indicates a good match'} "
+                    f"A score of {similarity_score * 100:.1f}% {'suggests a potential mismatch' if is_mismatch else 'indicates a good match'} "
                     "between the image content and the provided text description."
                 ),
                 "fallback_mode": True
