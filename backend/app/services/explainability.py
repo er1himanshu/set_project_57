@@ -45,7 +45,7 @@ def compute_attention_rollout(attentions: torch.Tensor, discard_ratio: float = 0
         raise ValueError("Attention tensor cannot be None")
     
     if attentions.numel() == 0:
-        raise ValueError("Attention tensor is empty")
+        raise ValueError("Attention tensor is empty (expected tensor with elements > 0)")
     
     # Average attention across all heads
     attentions = torch.mean(attentions, dim=1)  # (num_layers, num_patches, num_patches)

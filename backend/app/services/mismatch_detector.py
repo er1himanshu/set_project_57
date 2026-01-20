@@ -36,12 +36,13 @@ PRODUCT_CATEGORIES = [
 ]
 
 # Related category groups (for avoiding false positive mismatches)
+# Categories in the same group are considered related and won't trigger category mismatch messages
 RELATED_CATEGORY_GROUPS = [
     {"shoes", "boots", "sneakers", "sandals"},
     {"bike", "bicycle", "motorcycle"},
     {"bag", "handbag", "backpack", "purse"},
     {"dress", "shirt", "pants", "jeans", "jacket", "coat"},
-    {"watch", "jewelry", "necklace", "ring", "bracelet"},
+    {"jewelry", "necklace", "ring", "bracelet"},  # Watch is separate (wearable tech vs. jewelry)
 ]
 
 # Category detection confidence threshold
