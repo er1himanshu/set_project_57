@@ -173,6 +173,8 @@ Response:
 
 **This endpoint** generates a visual explanation using CLIP attention rollout, showing which parts of the image most influenced the similarity score between the image and description. The heatmap overlay uses warmer colors (red/yellow) to indicate regions of higher attention, and cooler colors (blue) for lower attention. The returned `heatmap_base64` is a base64-encoded PNG image that can be displayed directly in the browser.
 
+**Fallback Behavior**: If the CLIP model does not provide attention tensors (e.g., due to model architecture limitations or incomplete attention outputs), the endpoint automatically uses a simplified gradient-based visualization. The similarity score remains accurate and is always computed. The `explanation` field in the response will indicate when a fallback visualization is used.
+
 **Requirements**: This feature requires the CLIP model to be available locally. If the model is not accessible, the endpoint returns a 503 error.
 
 ### Get All Results
