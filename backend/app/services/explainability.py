@@ -248,27 +248,13 @@ def generate_clip_explanation(
         fallback_reason = ""
         
         with torch.no_grad():
-            # First, try to check if the model supports output_attentions
-            # by inspecting its config
-            try:
-                model_config = model.config
-                supports_attention = hasattr(model_config, 'output_attentions')
-            except AttributeError:
-                supports_attention = True  # Assume support and let it fail gracefully
-            
             # Try to get outputs with attention
-            if supports_attention:
-                try:
-                    outputs = model(**inputs, output_attentions=True)
-                except TypeError as e:
-                    # If TypeError occurs, model doesn't support output_attentions
-                    logger.warning(f"Model doesn't support output_attentions: {str(e)}, using fallback")
-                    outputs = model(**inputs)
-                    use_fallback = True
-                    fallback_reason = "model does not support attention visualization"
-            else:
-                # Model config indicates no attention support
-                logger.warning("Model config indicates output_attentions not supported, using fallback")
+            # We'll catch TypeError if the model doesn't support it
+            try:
+                outputs = model(**inputs, output_attentions=True)
+            except TypeError as e:
+                # Model doesn't support output_attentions parameter
+                logger.warning(f"Model doesn't support output_attentions: {str(e)}, using fallback")
                 outputs = model(**inputs)
                 use_fallback = True
                 fallback_reason = "model does not support attention visualization"
