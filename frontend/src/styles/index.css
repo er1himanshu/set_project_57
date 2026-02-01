@@ -45,6 +45,7 @@
   .btn-secondary::before {
     content: '';
     @apply absolute inset-0 bg-gradient-to-r from-primary-50 to-accent-50 opacity-0 transition-opacity duration-300;
+    pointer-events: none;
   }
   
   .btn-secondary:hover::before {
@@ -58,6 +59,7 @@
   .card::before {
     content: '';
     @apply absolute inset-0 bg-gradient-to-br from-primary-50/50 via-transparent to-accent-50/50 opacity-0 transition-opacity duration-500;
+    pointer-events: none;
   }
   
   .card:hover::before {
@@ -79,6 +81,7 @@
   .card-header::before {
     content: '';
     @apply absolute inset-0 bg-gradient-to-r from-primary-600/20 via-transparent to-accent-600/20 opacity-50;
+    pointer-events: none;
   }
   
   .input-field {

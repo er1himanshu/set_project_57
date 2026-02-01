@@ -481,6 +481,220 @@ npm run dev -- --port 3000
 - Ensure backend is running at http://localhost:8000
 - Check CORS settings in `backend/app/main.py`
 
+## 🎓 Training the CLIP Model with Custom Datasets
+
+The application uses a pretrained CLIP (Contrastive Language-Image Pre-training) model from Hugging Face for image-text similarity detection. While the default model (`openai/clip-vit-base-patch32`) works well for general ecommerce products, you may want to fine-tune it with your own domain-specific images and descriptions.
+
+### Understanding the Current Model
+
+The application currently uses the pretrained CLIP model, which has been trained on millions of image-text pairs from the internet. This model:
+- **Location**: Automatically downloaded to `~/.cache/huggingface/hub/` on first use
+- **Model**: `openai/clip-vit-base-patch32` (specified in `backend/app/config.py`)
+- **Size**: ~350MB download
+- **Purpose**: Measures semantic similarity between product images and descriptions
+
+### Option 1: Using Different Pretrained CLIP Models
+
+You can use other pretrained CLIP variants without any training:
+
+1. **Edit** `backend/app/config.py`:
+```python
+# Available models:
+# - openai/clip-vit-base-patch32 (default, 224x224, faster)
+# - openai/clip-vit-large-patch14 (336x336, more accurate but slower)
+# - openai/clip-vit-base-patch16 (224x224)
+
+CLIP_MODEL_NAME = "openai/clip-vit-large-patch14"  # Change this line
+```
+
+2. **Restart** the backend server - the new model will download automatically on first use.
+
+3. **Compare results** and adjust `MISMATCH_THRESHOLD` in `config.py` if needed.
+
+### Option 2: Fine-tuning CLIP with Your Own Dataset
+
+To train CLIP on your own ecommerce product images and descriptions:
+
+#### Step 1: Prepare Your Dataset
+
+Create a dataset with image-description pairs in this format:
+
+```
+dataset/
+├── images/
+│   ├── product_001.jpg
+│   ├── product_002.jpg
+│   └── ...
+└── metadata.csv
+```
+
+**metadata.csv** should contain:
+```csv
+image_filename,description
+product_001.jpg,"Red leather handbag with gold hardware, 12 inch width"
+product_002.jpg,"Blue cotton t-shirt, size medium, crew neck"
+...
+```
+
+#### Step 2: Set Up Training Environment
+
+```bash
+# Install additional training dependencies
+pip install datasets accelerate wandb
+
+# Optional: For distributed training
+pip install deepspeed
+```
+
+#### Step 3: Create Training Script
+
+Create `backend/train_clip.py`:
+
+```python
+"""
+Fine-tune CLIP model on custom ecommerce dataset
+"""
+import torch
+from transformers import CLIPProcessor, CLIPModel, TrainingArguments, Trainer
+from datasets import load_dataset
+from PIL import Image
+import pandas as pd
+
+# Load your dataset
+def load_custom_dataset(csv_path, images_dir):
+    df = pd.read_csv(csv_path)
+    
+    dataset = []
+    for idx, row in df.iterrows():
+        image_path = f"{images_dir}/{row['image_filename']}"
+        dataset.append({
+            'image': Image.open(image_path).convert('RGB'),
+            'text': row['description']
+        })
+    
+    return dataset
+
+# Initialize model and processor
+model_name = "openai/clip-vit-base-patch32"
+processor = CLIPProcessor.from_pretrained(model_name)
+model = CLIPModel.from_pretrained(model_name)
+
+# Load your data
+train_data = load_custom_dataset('dataset/metadata.csv', 'dataset/images')
+
+# Preprocess data
+def preprocess_function(examples):
+    images = [example['image'] for example in examples]
+    texts = [example['text'] for example in examples]
+    
+    inputs = processor(
+        text=texts,
+        images=images,
+        return_tensors="pt",
+        padding=True,
+        truncation=True
+    )
+    return inputs
+
+# Training configuration
+training_args = TrainingArguments(
+    output_dir="./clip-finetuned",
+    num_train_epochs=3,
+    per_device_train_batch_size=16,
+    learning_rate=5e-5,
+    warmup_steps=100,
+    logging_steps=10,
+    save_steps=500,
+    evaluation_strategy="steps",
+    save_total_limit=2,
+)
+
+# Train the model
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_data,
+)
+
+trainer.train()
+
+# Save the fine-tuned model
+model.save_pretrained("./clip-finetuned-model")
+processor.save_pretrained("./clip-finetuned-model")
+```
+
+#### Step 4: Run Training
+
+```bash
+cd backend
+python train_clip.py
+```
+
+#### Step 5: Use Your Fine-tuned Model
+
+Update `backend/app/config.py`:
+
+```python
+# Point to your fine-tuned model
+CLIP_MODEL_NAME = "./clip-finetuned-model"  # Local path
+```
+
+Restart the backend server to use your custom model.
+
+### Option 3: Using Classical Computer Vision Datasets
+
+If you want to test with standard datasets (CIFAR-10, ImageNet, COCO, etc.):
+
+#### Using COCO Dataset (Product-like Images)
+
+```bash
+# Install datasets library
+pip install datasets
+
+# Download COCO captions dataset
+python -c "from datasets import load_dataset; load_dataset('HuggingFace-CN/COCO-captions', split='train')"
+```
+
+Then modify the training script to use COCO:
+
+```python
+from datasets import load_dataset
+
+# Load COCO dataset
+dataset = load_dataset('HuggingFace-CN/COCO-captions', split='train')
+
+# Use the first 10,000 images for faster training
+train_dataset = dataset.select(range(10000))
+```
+
+### Training Tips
+
+1. **Start Small**: Begin with 100-500 images to verify the pipeline works
+2. **Monitor Loss**: Use Weights & Biases (wandb) to track training progress
+3. **Adjust Learning Rate**: Start with 5e-5, reduce if training is unstable
+4. **Batch Size**: Increase for faster training (requires more GPU memory)
+5. **Data Augmentation**: Apply random crops, flips, and color jittering to improve generalization
+
+### Performance Considerations
+
+- **Training Time**: ~2-4 hours for 10,000 images on a modern GPU
+- **GPU Required**: Fine-tuning requires at least 8GB GPU memory (16GB+ recommended)
+- **CPU Training**: Possible but very slow (10-20x slower)
+- **Inference**: Pretrained models run fine on CPU for production use
+
+### Validation
+
+After training, validate your model:
+
+```bash
+# Test the fine-tuned model
+curl -X POST http://localhost:8000/check-mismatch \
+  -F "file=@test_image.jpg" \
+  -F "description=Test product description"
+```
+
+Compare similarity scores before and after fine-tuning to measure improvement.
+
 ## 📝 License
 
 This project is open source and available for educational purposes.
